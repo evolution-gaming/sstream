@@ -5,6 +5,29 @@
 [![version](https://api.bintray.com/packages/evolutiongaming/maven/sstream/images/download.svg) ](https://bintray.com/evolutiongaming/maven/sstream/_latestVersion)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellowgreen.svg)](https://opensource.org/licenses/MIT)
 
+## Use case examples
+
+```scala
+  test("take") {
+    Stream[Id].many(1, 2, 3).take(1).toList shouldEqual List(1)
+  }
+
+  test("first") {
+    Stream[Id].single(0).first shouldEqual Some(0)
+  }
+
+  test("repeat") {
+    Stream.repeat[Id, Int](0).take(3).length shouldEqual 3
+  }
+
+  test("collect") {
+    Stream[Id].many(1, 2, 3).collect { case x if x >= 2 => x + 1 }.toList shouldEqual List(3, 4)
+  }
+
+  test("zipWithIndex") {
+    Stream.repeat[Id, Int](0).zipWithIndex.take(3).toList shouldEqual List((0, 0), (0, 1), (0, 2))
+  }
+```
 
 ## Setup
 
