@@ -1,15 +1,11 @@
 package com.evolutiongaming.sstream
 
 import cats.implicits._
-import cats.{Foldable, Id, Monad}
+import cats.{Foldable, Monad}
 
 trait FoldWhile[F[_]] {
 
   def foldWhileM[G[_], A, L, R](fa: F[A], l: L)(f: (L, A) => G[Either[L, R]])(implicit G: Monad[G]): G[Either[L, R]]
-
-  def foldWhile[A, L, R](fa: F[A], l: L)(f: (L, A) => Either[L, R]): Either[L, R] = {
-    foldWhileM[Id, A, L, R](fa, l)(f)
-  }
 }
 
 object FoldWhile {
@@ -29,10 +25,6 @@ object FoldWhile {
 
     def foldWhileM[G[_], L, R](l: L)(f: (L, A) => G[Either[L, R]])(implicit F: FoldWhile[F], G: Monad[G]): G[Either[L, R]] = {
       F.foldWhileM[G, A, L, R](self, l)(f)
-    }
-
-    def foldWhile[L, R](l: L)(f: (L, A) => Either[L, R])(implicit F: FoldWhile[F]): Either[L, R] = {
-      F.foldWhile[A, L, R](self, l)(f)
     }
   }
 }
