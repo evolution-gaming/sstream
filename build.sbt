@@ -23,9 +23,6 @@ resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
 libraryDependencies ++= Seq(
   Cats.core,
   Cats.effect,
-  `cats-par`,
-  `cats-helper`,
-  smetrics,
   scalatest % Test)
 
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
