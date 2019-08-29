@@ -18,23 +18,11 @@ object Stream { self =>
 
   implicit def monadStream[F[_]]: Monad[Stream[F, ?]] = new StackSafeMonad[Stream[F, ?]] {
 
-    def flatMap[A, B](fa: Stream[F, A])(f: A => Stream[F, B]) = new Stream[F, B] {
+    def flatMap[A, B](fa: Stream[F, A])(f: A => Stream[F, B]) = fa.flatMap(f)
 
-      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
-        fa.foldWhileM(l) { (l, a) => f(a).foldWhileM(l)(f1) }
-      }
-    }
+    def pure[A](a: A) = single[F, A](a)
 
-    def pure[A](a: A) = new Stream[F, A] {
-      def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = f(l, a)
-    }
-
-    override def map[A, B](fa: Stream[F, A])(f: A => B) = new Stream[F, B] {
-
-      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
-        fa.foldWhileM(l) { (l, a) => f1(l, f(a)) }
-      }
-    }
+    override def map[A, B](fa: Stream[F, A])(f: A => B) = fa.map(f)
   }
 
 
@@ -56,6 +44,10 @@ object Stream { self =>
         r.asRight
       }
     }
+  }
+
+  def single[F[_], A](a: A): Stream[F, A] = new Stream[F, A] {
+    def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = f(l, a)
   }
 
 
@@ -85,7 +77,7 @@ object Stream { self =>
       fromResource(resource)
     }
 
-    def single[A](a: A): Stream[F, A] = a.pure[Stream[F, ?]]
+    def single[A](a: A): Stream[F, A] = Stream.single[F, A](a)
 
     def many[A](a: A, as: A*): Stream[F, A] = apply[List, A](a :: as.toList)
 
@@ -181,10 +173,26 @@ object Stream { self =>
     }
 
 
+    final def map[B](f: A => B): Stream[F, B] = new Stream[F, B] {
+
+      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        self.foldWhileM(l) { (l, a) => f1(l, f(a)) }
+      }
+    }
+
+
     final def mapM[B](f: A => F[B])(implicit F: FlatMap[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
         self.foldWhileM(l) { (l, a) => f(a).flatMap(b => f1(l, b)) }
+      }
+    }
+
+
+    final def flatMap[B](f: A => Stream[F, B]): Stream[F, B] = new Stream[F, B] {
+
+      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        self.foldWhileM(l) { (l, a) => f(a).foldWhileM(l)(f1) }
       }
     }
 
