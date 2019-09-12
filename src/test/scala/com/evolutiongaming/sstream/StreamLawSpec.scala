@@ -5,11 +5,11 @@ import cats.implicits._
 import cats.laws.discipline.MonadTests
 import cats.{Eq, Eval}
 import org.scalacheck.Arbitrary
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import org.typelevel.discipline.scalatest.Discipline
 
 
-class StreamLawSpec extends FunSuite with Discipline {
+class StreamLawSpec extends AnyFunSuite with Discipline {
 
   implicit def eqStream[A: Eq]: Eq[Stream[Eval, A]] = (x: Stream[Eval, A], y: Stream[Eval, A]) => {
     x.toList.value == y.toList.value

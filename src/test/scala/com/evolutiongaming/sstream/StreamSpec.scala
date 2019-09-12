@@ -4,11 +4,12 @@ import cats.data.IndexedStateT
 import cats.effect.{Bracket, ExitCase, Resource}
 import cats.implicits._
 import cats.{Id, MonadError}
-import org.scalatest.{FunSuite, Matchers}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.Matchers
 
 import scala.util.{Success, Try}
 
-class StreamSpec extends FunSuite with Matchers {
+class StreamSpec extends AnyFunSuite with Matchers {
 
   test("apply resource") {
 

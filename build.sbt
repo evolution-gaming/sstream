@@ -25,7 +25,9 @@ libraryDependencies ++= Seq(
   Cats.effect,
   Cats.laws % Test,
   scalatest % Test,
-  `scalacheck-shapeless` % Test)
+  discipline % Test,
+  `scalacheck-shapeless` % Test,
+)
 
 libraryDependencies += compilerPlugin(`kind-projector` cross CrossVersion.binary)
 
