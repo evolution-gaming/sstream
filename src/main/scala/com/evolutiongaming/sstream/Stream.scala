@@ -214,7 +214,7 @@ object Stream { self =>
 
 
     final def zipWithIndex(implicit F: Monad[F]): Stream[F, (A, Long)] = {
-      foldMap(0l) { (l, a) => (l + 1, (a, l)) }
+      foldMap(0L) { (l, a) => (l + 1, (a, l)) }
     }
 
 
