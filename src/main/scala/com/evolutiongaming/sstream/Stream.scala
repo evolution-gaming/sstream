@@ -262,10 +262,10 @@ object Stream { self =>
               ab       <- f(s, a)
               (s, cmd)  = ab
               result   <- cmd match {
-                case Cmd.Skip    => (s, l).asLeft[Either[L, R]].pure[F]
-                case Cmd.Stop    => l.asLeft[R].asRight[(S, L)].pure[F]
-                case Cmd.Take(b) => for {
-                  result <- f1(l, b)
+                case Cmd.Skip         => (s, l).asLeft[Either[L, R]].pure[F]
+                case Cmd.Stop         => l.asLeft[R].asRight[(S, L)].pure[F]
+                case cmd :Cmd.Take[A] => for {
+                  result <- f1(l, cmd.value)
                 } yield result match {
                   case Left(l) => (s, l).asLeft[Either[L, R]]
                   case r       => r.asRight[(S, L)]
@@ -294,10 +294,10 @@ object Stream { self =>
             for {
               cmd    <- f(a)
               result <- cmd match {
-                case Cmd.Skip    => l.asLeft[Either[L, R]].pure[F]
-                case Cmd.Stop    => l.asLeft[R].asRight[L].pure[F]
-                case Cmd.Take(b) => for {
-                  result <- f1(l, b)
+                case Cmd.Skip         => l.asLeft[Either[L, R]].pure[F]
+                case Cmd.Stop         => l.asLeft[R].asRight[L].pure[F]
+                case cmd: Cmd.Take[B] => for {
+                  result <- f1(l, cmd.value)
                 } yield result match {
                   case Left(l) => l.asLeft[Either[L, R]]
                   case r       => r.asRight[L]
