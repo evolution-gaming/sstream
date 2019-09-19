@@ -3,9 +3,9 @@ package com.evolutiongaming.sstream
 import cats.data.IndexedStateT
 import cats.effect.{Bracket, ExitCase, Resource}
 import cats.implicits._
-import cats.{Id, MonadError}
-import org.scalatest.funsuite.AnyFunSuite
+import cats.{Id, MonadError, ~>}
 import org.scalatest.Matchers
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.util.{Success, Try}
 
@@ -26,7 +26,7 @@ class StreamSpec extends AnyFunSuite with Matchers {
     }
 
     object State {
-      lazy val Empty: State = State(0, List.empty)
+      def empty: State = State(0, List.empty)
     }
 
 
@@ -95,7 +95,7 @@ class StreamSpec extends AnyFunSuite with Matchers {
       a <- Stream[StateT].repeat(a)
     } yield a
 
-    val (state, value) = stream.take(2).toList.run(State.Empty).get
+    val (state, value) = stream.take(2).toList.run(State.empty).get
     value shouldEqual List(1, 2)
     state shouldEqual State(3, List(
       Action.Release,
@@ -172,5 +172,59 @@ class StreamSpec extends AnyFunSuite with Matchers {
 
   test("dropWhile") {
     Stream[Id].many(1, 2, 1).dropWhile(_ < 2).toList shouldEqual List(2, 1)
+  }
+
+  test("around") {
+    sealed trait Action
+
+    object Action {
+      case object Before extends Action
+      case object Inside extends Action
+      case object After extends Action
+    }
+
+    type State = List[Action]
+
+    object State {
+      def empty: State = List.empty
+    }
+
+
+    type StateT[A] = cats.data.StateT[Id, State, A]
+
+    object StateT {
+
+      def apply[A](f: State => (State, A)): StateT[A] = {
+        cats.data.StateT[Id, State, A](f)
+      }
+    }
+
+    val functionK = new (StateT ~> StateT) {
+      def apply[A](fa: StateT[A]) = {
+        StateT { state =>
+          val state1 = Action.Before :: state
+          val (state2, a) = fa.run(state1)
+          val state3 = Action.After :: state2
+          (state3, a)
+        }
+      }
+    }
+
+    val inside = StateT { state =>
+      val state1 = Action.Inside :: state
+      (state1, ())
+    }
+
+    val stream = for {
+      _ <- Stream.around(functionK)
+      _ <- Stream.lift(inside)
+    } yield ()
+
+    val (state, value) = stream.toList.run(State.empty)
+    value shouldEqual List(())
+    state shouldEqual List(
+      Action.After,
+      Action.Inside,
+      Action.Before)
   }
 }

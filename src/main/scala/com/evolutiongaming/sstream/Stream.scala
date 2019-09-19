@@ -61,6 +61,13 @@ object Stream { self =>
   }
 
 
+  def around[F[_]](f: F ~> F): Stream[F, Unit] = new Stream[F, Unit] {
+    def foldWhileM[L, R](l: L)(f1: (L, Unit) => F[Either[L, R]]) = {
+      f(f1(l, ()))
+    }
+  }
+  
+
   def fromResource[F[_], A](resource: Resource[F, A])(implicit F: Bracket[F, Throwable]): Stream[F, A] = new Stream[F, A] {
     
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
