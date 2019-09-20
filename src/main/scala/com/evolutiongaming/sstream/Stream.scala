@@ -11,7 +11,8 @@ trait Stream[F[_], A] {
   def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]): F[Either[L, R]]
 }
 
-object Stream { self =>
+object Stream {
+  self =>
 
   def apply[F[_]](implicit F: Monad[F]): Builders[F] = new Builders[F](F)
 
@@ -66,10 +67,10 @@ object Stream { self =>
       f(f1(l, ()))
     }
   }
-  
+
 
   def fromResource[F[_], A](resource: Resource[F, A])(implicit F: Bracket[F, Throwable]): Stream[F, A] = new Stream[F, A] {
-    
+
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
       resource.use(a => f(l, a))
     }
@@ -153,7 +154,7 @@ object Stream { self =>
 
 
     def length(implicit F: Monad[F]): F[Long] = {
-      fold(0L) { (n, _) =>  n + 1 }
+      fold(0L) { (n, _) => n + 1 }
     }
 
 
@@ -265,8 +266,8 @@ object Stream { self =>
     def foldMapM[B, S](s: S)(f: (S, A) => F[(S, B)])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
-        for {
-          result <- self.foldWhileM((s, l)) { case ((s, l), a) =>
+        self
+          .foldWhileM((s, l)) { case ((s, l), a) =>
             for {
               ab     <- f(s, a)
               (s, b)  = ab
@@ -275,9 +276,7 @@ object Stream { self =>
               result.leftMap { l => (s, l) }
             }
           }
-        } yield {
-          result.leftMap { case (_, l) => l }
-        }
+          .map { _.leftMap { case (_, l) => l } }
       }
     }
 
@@ -290,15 +289,16 @@ object Stream { self =>
     def foldMapCmdM[B, S](s: S)(f: (S, A) => F[(S, Cmd[B])])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
-        for {
-          result <- self.foldWhileM[(S, L), Either[L, R]]((s, l)) { case ((s, l), a) =>
+
+        self
+          .foldWhileM((s, l)) { case ((s, l), a) =>
             for {
               ab       <- f(s, a)
               (s, cmd)  = ab
               result   <- cmd match {
                 case Cmd.Skip         => (s, l).asLeft[Either[L, R]].pure[F]
                 case Cmd.Stop         => l.asLeft[R].asRight[(S, L)].pure[F]
-                case cmd :Cmd.Take[A] => for {
+                case cmd: Cmd.Take[A] => for {
                   result <- f1(l, cmd.value)
                 } yield result match {
                   case Left(l) => (s, l).asLeft[Either[L, R]]
@@ -307,10 +307,10 @@ object Stream { self =>
               }
             } yield result
           }
-        } yield result match {
-          case Left((_, l)) => l.asLeft[R]
-          case Right(r)     => r
-        }
+          .map {
+            case Left((_, l)) => l.asLeft[R]
+            case Right(r)     => r
+          }
       }
     }
 
@@ -353,11 +353,9 @@ object Stream { self =>
 
     def drain(implicit F: Applicative[F]): F[Unit] = {
       val unit = ().asLeft[Unit].pure[F]
-      for {
-        result <- self.foldWhileM(()) { (_, _) => unit }
-      } yield {
-        result.merge
-      }
+      self
+        .foldWhileM(()) { (_, _) => unit }
+        .map(_.merge)
     }
   }
 
