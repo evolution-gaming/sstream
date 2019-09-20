@@ -120,12 +120,12 @@ object Stream { self =>
       }
     }
 
-    final def foldWhile[L, R](l: L)(f: (L, A) => Either[L, R])(implicit F: Applicative[F]): F[Either[L, R]] = {
+    def foldWhile[L, R](l: L)(f: (L, A) => Either[L, R])(implicit F: Applicative[F]): F[Either[L, R]] = {
       self.foldWhileM[L, R](l) { (l, a) => f(l, a).pure[F] }
     }
 
 
-    final def fold[B](b: B)(f: (B, A) => B)(implicit F: Applicative[F]): F[B] = {
+    def fold[B](b: B)(f: (B, A) => B)(implicit F: Applicative[F]): F[B] = {
       for {
         result <- foldWhile(b) { (b, a) => f(b, a).asLeft[B] }
       } yield {
@@ -134,7 +134,7 @@ object Stream { self =>
     }
 
 
-    final def foldM[B](b: B)(f: (B, A) => F[B])(implicit F: Applicative[F]): F[B] = {
+    def foldM[B](b: B)(f: (B, A) => F[B])(implicit F: Applicative[F]): F[B] = {
       for {
         result <- self.foldWhileM(b) { (b, a) => f(b, a).map(_.asLeft[B]) }
       } yield {
@@ -143,7 +143,7 @@ object Stream { self =>
     }
 
 
-    final def toList(implicit F: Applicative[F]): F[List[A]] = {
+    def toList(implicit F: Applicative[F]): F[List[A]] = {
       for {
         result <- fold(List.empty[A]) { (b, a) => a :: b }
       } yield {
@@ -152,17 +152,41 @@ object Stream { self =>
     }
 
 
-    final def length(implicit F: Monad[F]): F[Long] = {
+    def length(implicit F: Monad[F]): F[Long] = {
       fold(0L) { (n, _) =>  n + 1 }
     }
 
 
-    final def take(n: Long)(implicit F: Monad[F]): Stream[F, A] = {
-      foldMapCmd(n) { (n, a) => if (n > 0) (n - 1, Cmd.take(a)) else (n, Cmd.stop) }
+    def take(n: Long)(implicit F: Monad[F]): Stream[F, A] = {
+      if (n <= 0) empty[F, A]
+      else new Stream[F, A] {
+        def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
+          self
+            .foldWhileM((l, n)) { case ((l, n), a) =>
+              if (n == 0) {
+                l.asLeft[R].asRight[(L, Long)].pure[F]
+              } else if (n == 1) {
+                f(l, a).map {
+                  case Right(r) => r.asRight[L].asRight[(L, Long)]
+                  case Left(l)  => l.asLeft[R].asRight[(L, Long)]
+                }
+              } else {
+                f(l, a).map {
+                  case Left(l)  => (l, n - 1).asLeft[Either[L, R]]
+                  case Right(r) => r.asRight[L].asRight[(L, Long)]
+                }
+              }
+            }
+            .map {
+              case Left((a, _)) => a.asLeft[R]
+              case Right(a)     => a
+            }
+        }
+      }
     }
 
 
-    final def first(implicit F: Applicative[F]): F[Option[A]] = {
+    def first(implicit F: Applicative[F]): F[Option[A]] = {
       for {
         result <- foldWhile(none[A]) { (_, a) => a.some.asRight[Option[A]] }
       } yield {
@@ -171,7 +195,7 @@ object Stream { self =>
     }
 
 
-    final def last(implicit F: Applicative[F]): F[Option[A]] = {
+    def last(implicit F: Applicative[F]): F[Option[A]] = {
       for {
         result <- foldWhile(none[A]) { (_, a) => a.some.asLeft[Option[A]] }
       } yield {
@@ -180,7 +204,7 @@ object Stream { self =>
     }
 
 
-    final def map[B](f: A => B): Stream[F, B] = new Stream[F, B] {
+    def map[B](f: A => B): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
         self.foldWhileM(l) { (l, a) => f1(l, f(a)) }
@@ -188,7 +212,7 @@ object Stream { self =>
     }
 
 
-    final def mapM[B](f: A => F[B])(implicit F: FlatMap[F]): Stream[F, B] = new Stream[F, B] {
+    def mapM[B](f: A => F[B])(implicit F: FlatMap[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
         self.foldWhileM(l) { (l, a) => f(a).flatMap(b => f1(l, b)) }
@@ -196,7 +220,7 @@ object Stream { self =>
     }
 
 
-    final def flatMap[B](f: A => Stream[F, B]): Stream[F, B] = new Stream[F, B] {
+    def flatMap[B](f: A => Stream[F, B]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
         self.foldWhileM(l) { (l, a) => f(a).foldWhileM(l)(f1) }
@@ -204,7 +228,7 @@ object Stream { self =>
     }
 
 
-    final def collect[B](pf: PartialFunction[A, B])(implicit F: Applicative[F]): Stream[F, B] = new Stream[F, B] {
+    def collect[B](pf: PartialFunction[A, B])(implicit F: Applicative[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f: (L, B) => F[Either[L, R]]) = {
         self.foldWhileM(l) { (l, a) => if (pf.isDefinedAt(a)) f(l, pf(a)) else l.asLeft[R].pure[F] }
@@ -212,7 +236,7 @@ object Stream { self =>
     }
 
 
-    final def filter(f: A => Boolean)(implicit F: Applicative[F]): Stream[F, A] = new Stream[F, A] {
+    def filter(f: A => Boolean)(implicit F: Applicative[F]): Stream[F, A] = new Stream[F, A] {
 
       def foldWhileM[L, R](l: L)(f1: (L, A) => F[Either[L, R]]) = {
         self.foldWhileM(l) { (l, a) => if (f(a)) f1(l, a) else l.asLeft[R].pure[F] }
@@ -220,22 +244,25 @@ object Stream { self =>
     }
 
 
-    final def zipWithIndex(implicit F: Monad[F]): Stream[F, (A, Long)] = {
+    def withFilter(f: A => Boolean)(implicit F: Applicative[F]): Stream[F, A] = filter(f)
+
+
+    def zipWithIndex(implicit F: Monad[F]): Stream[F, (A, Long)] = {
       foldMap(0L) { (l, a) => (l + 1, (a, l)) }
     }
 
 
-    final def dropWhile(f: A => Boolean)(implicit F: Monad[F]): Stream[F, A] = {
+    def dropWhile(f: A => Boolean)(implicit F: Monad[F]): Stream[F, A] = {
       foldMapCmd(true) { (drop, a) => if (drop && f(a)) (drop, Cmd.skip) else (false, Cmd.take(a)) }
     }
 
 
-    final def takeWhile(f: A => Boolean)(implicit F: Monad[F]): Stream[F, A] = {
+    def takeWhile(f: A => Boolean)(implicit F: Monad[F]): Stream[F, A] = {
       mapCmd { a => if (f(a)) Cmd.take(a) else Cmd.stop }
     }
 
 
-    final def foldMapM[B, S](s: S)(f: (S, A) => F[(S, B)])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
+    def foldMapM[B, S](s: S)(f: (S, A) => F[(S, B)])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
         for {
@@ -255,12 +282,12 @@ object Stream { self =>
     }
 
 
-    final def foldMap[B, S](s: S)(f: (S, A) => (S, B))(implicit F: Monad[F]): Stream[F, B] = {
+    def foldMap[B, S](s: S)(f: (S, A) => (S, B))(implicit F: Monad[F]): Stream[F, B] = {
       foldMapM(s) { (s, a) => f(s, a).pure[F] }
     }
 
 
-    final def foldMapCmdM[B, S](s: S)(f: (S, A) => F[(S, Cmd[B])])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
+    def foldMapCmdM[B, S](s: S)(f: (S, A) => F[(S, Cmd[B])])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
         for {
@@ -288,12 +315,12 @@ object Stream { self =>
     }
 
 
-    final def foldMapCmd[B, S](s: S)(f: (S, A) => (S, Cmd[B]))(implicit F: Monad[F]): Stream[F, B] = {
+    def foldMapCmd[B, S](s: S)(f: (S, A) => (S, Cmd[B]))(implicit F: Monad[F]): Stream[F, B] = {
       foldMapCmdM(s) { (s, a) => f(s, a).pure[F] }
     }
 
 
-    final def mapCmdM[B](f: A => F[Cmd[B]])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
+    def mapCmdM[B](f: A => F[Cmd[B]])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
         for {
@@ -319,12 +346,12 @@ object Stream { self =>
     }
 
 
-    final def mapCmd[B](f: A => Cmd[B])(implicit F: Monad[F]): Stream[F, B] = {
+    def mapCmd[B](f: A => Cmd[B])(implicit F: Monad[F]): Stream[F, B] = {
       mapCmdM { a => f(a).pure[F] }
     }
 
 
-    final def drain(implicit F: Applicative[F]): F[Unit] = {
+    def drain(implicit F: Applicative[F]): F[Unit] = {
       val unit = ().asLeft[Unit].pure[F]
       for {
         result <- self.foldWhileM(()) { (_, _) => unit }

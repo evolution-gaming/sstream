@@ -7,7 +7,8 @@ import cats.{Id, MonadError, ~>}
 import org.scalatest.Matchers
 import org.scalatest.funsuite.AnyFunSuite
 
-import scala.util.{Success, Try}
+import scala.util.control.NoStackTrace
+import scala.util.{Failure, Success, Try}
 
 class StreamSpec extends AnyFunSuite with Matchers {
 
@@ -97,9 +98,8 @@ class StreamSpec extends AnyFunSuite with Matchers {
 
     val (state, value) = stream.take(2).toList.run(State.empty).get
     value shouldEqual List(1, 2)
-    state shouldEqual State(3, List(
+    state shouldEqual State(2, List(
       Action.Release,
-      Action.Use,
       Action.Use,
       Action.Use,
       Action.Acquire))
@@ -133,7 +133,15 @@ class StreamSpec extends AnyFunSuite with Matchers {
 
   test("take") {
     Stream.lift[Id, Int](0).take(3).toList shouldEqual List(0)
+
     Stream[Id].many(1, 2, 3).take(1).toList shouldEqual List(1)
+
+    val error = new RuntimeException with NoStackTrace
+    val stream = for {
+      a <- Stream[Try].apply(List(Success(1), Failure(error)))
+      a <- Stream.lift(a)
+    } yield a
+    stream.take(1).toList shouldEqual Success(List(1))
   }
 
   test("first") {
@@ -156,6 +164,13 @@ class StreamSpec extends AnyFunSuite with Matchers {
 
   test("filter") {
     Stream[Id].many(1, 2, 3).filter(_ >= 2).toList shouldEqual List(2, 3)
+  }
+
+  test("withFilter") {
+    val stream = for {
+      a <- Stream[Id].repeat(0) if a == 0
+    } yield a
+    stream.first shouldEqual 0.some
   }
 
   test("collect") {
