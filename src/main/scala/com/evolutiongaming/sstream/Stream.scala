@@ -79,7 +79,7 @@ object Stream { self =>
   def fromIterator[F[_] : Sync, A](iterator: F[Iterator[A]]): Stream[F, A] = {
     for {
       as <- Stream.lift(iterator)
-      fa  = Sync[F].delay { as.nextOption() }
+      fa  = Sync[F].delay { if (as.hasNext) as.next().some else none[A] }
       a  <- untilNone(fa)
     } yield a
   }
