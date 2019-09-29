@@ -1,7 +1,7 @@
 package com.evolutiongaming.sstream
 
 import cats.data.IndexedStateT
-import cats.effect.{Bracket, ExitCase, Resource}
+import cats.effect.{Bracket, ExitCase, IO, Resource}
 import cats.implicits._
 import cats.{Id, MonadError, ~>}
 import org.scalatest.Matchers
@@ -241,5 +241,14 @@ class StreamSpec extends AnyFunSuite with Matchers {
       Action.After,
       Action.Inside,
       Action.Before)
+  }
+
+  test("fromIterator") {
+    val error = new RuntimeException with NoStackTrace
+    val list = List(0.pure[Try], 1.pure[Try], 2.pure[Try], error.raiseError[Try, Int])
+    def iterator = IO.delay { list.iterator.map(_.get) }
+    val stream = Stream.fromIterator(iterator)
+    stream.take(3).toList.unsafeRunSync() shouldEqual List(0, 1, 2)
+    Try { stream.take(4).toList.unsafeRunSync() } shouldEqual Failure(error)
   }
 }

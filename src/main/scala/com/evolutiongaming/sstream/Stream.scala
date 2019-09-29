@@ -1,6 +1,6 @@
 package com.evolutiongaming.sstream
 
-import cats.effect.{Bracket, Resource}
+import cats.effect.{Bracket, Resource, Sync}
 import cats.implicits._
 import cats.{Applicative, FlatMap, Monad, StackSafeMonad, ~>}
 
@@ -11,8 +11,7 @@ trait Stream[F[_], A] {
   def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]): F[Either[L, R]]
 }
 
-object Stream {
-  self =>
+object Stream { self =>
 
   def apply[F[_]](implicit F: Monad[F]): Builders[F] = new Builders[F](F)
 
@@ -73,6 +72,34 @@ object Stream {
 
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
       resource.use(a => f(l, a))
+    }
+  }
+
+
+  def fromIterator[F[_] : Sync, A](iterator: F[Iterator[A]]): Stream[F, A] = {
+    for {
+      as <- Stream.lift(iterator)
+      fa  = Sync[F].delay { as.nextOption() }
+      a  <- untilNone(fa)
+    } yield a
+  }
+
+
+  def untilNone[F[_] : Monad, A](a: F[Option[A]]): Stream[F, A] = new Stream[F, A] {
+
+    def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
+      l
+        .tailRecM[F, Either[L, R]] { l =>
+          for {
+            a <- a
+            a <- a.fold { l.asLeft[R].asRight[L].pure[F] } { a =>
+              f(l, a).map {
+                case a: Left[L, R]  => a.asInstanceOf[Left[L, Either[L, R]]]
+                case a: Right[L, R] => a.asRight[L]
+              }
+            }
+          } yield a
+        }
     }
   }
 
@@ -168,13 +195,13 @@ object Stream {
                 l.asLeft[R].asRight[(L, Long)].pure[F]
               } else if (n == 1) {
                 f(l, a).map {
-                  case Right(r) => r.asRight[L].asRight[(L, Long)]
-                  case Left(l)  => l.asLeft[R].asRight[(L, Long)]
+                  case a: Right[L, R] => a.asRight[(L, Long)]
+                  case a: Left[L, R]  => a.asRight[(L, Long)]
                 }
               } else {
                 f(l, a).map {
-                  case Left(l)  => (l, n - 1).asLeft[Either[L, R]]
-                  case Right(r) => r.asRight[L].asRight[(L, Long)]
+                  case a: Right[L, R] => a.asRight[(L, Long)]
+                  case Left(l)        => (l, n - 1).asLeft[Either[L, R]]
                 }
               }
             }
@@ -333,8 +360,8 @@ object Stream {
                 case cmd: Cmd.Take[B] => for {
                   result <- f1(l, cmd.value)
                 } yield result match {
-                  case Left(l) => l.asLeft[Either[L, R]]
-                  case r       => r.asRight[L]
+                  case a: Left[L, R] => a.asInstanceOf[Either[L, Either[L, R]]]
+                  case a             => a.asRight[L]
                 }
               }
             } yield result
