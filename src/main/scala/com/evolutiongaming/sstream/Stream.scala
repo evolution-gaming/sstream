@@ -94,7 +94,7 @@ object Stream { self =>
             a <- a
             a <- a.fold { l.asLeft[R].asRight[L].pure[F] } { a =>
               f(l, a).map {
-                case a: Left[L, R]  => a.asInstanceOf[Left[L, Either[L, R]]]
+                case a: Left[L, R]  => a.rightCast[Either[L, R]]
                 case a: Right[L, R] => a.asRight[L]
               }
             }
@@ -360,7 +360,7 @@ object Stream { self =>
                 case cmd: Cmd.Take[B] => for {
                   result <- f1(l, cmd.value)
                 } yield result match {
-                  case a: Left[L, R] => a.asInstanceOf[Either[L, Either[L, R]]]
+                  case a: Left[L, R] => a.rightCast[Either[L, R]]
                   case a             => a.asRight[L]
                 }
               }
