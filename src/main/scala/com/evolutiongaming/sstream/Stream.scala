@@ -16,7 +16,7 @@ object Stream { self =>
   def apply[F[_]](implicit F: Monad[F]): Builders[F] = new Builders[F](F)
 
 
-  implicit def monadStream[F[_]]: Monad[Stream[F, ?]] = new StackSafeMonad[Stream[F, ?]] {
+  implicit def monadStream[F[_]]: Monad[Stream[F, *]] = new StackSafeMonad[Stream[F, *]] {
 
     def flatMap[A, B](fa: Stream[F, A])(f: A => Stream[F, B]) = fa.flatMap(f)
 
@@ -88,8 +88,7 @@ object Stream { self =>
   def untilNone[F[_] : Monad, A](a: F[Option[A]]): Stream[F, A] = new Stream[F, A] {
 
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
-      l
-        .tailRecM[F, Either[L, R]] { l =>
+      l.tailRecM[F, Either[L, R]] { l =>
           for {
             a <- a
             a <- a.fold { l.asLeft[R].asRight[L].pure[F] } { a =>

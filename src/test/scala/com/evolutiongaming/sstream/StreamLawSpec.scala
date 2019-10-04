@@ -24,5 +24,5 @@ class StreamLawSpec extends AnyFunSuite with Discipline {
       }
     }
 
-  checkAll("Stream.MonadLaws", MonadTests[Stream[Eval, ?]].stackUnsafeMonad[Int, Int, String])
+  checkAll("Stream.MonadLaws", MonadTests[Stream[Eval, *]].stackUnsafeMonad[Int, Int, String])
 }
