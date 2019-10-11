@@ -144,6 +144,14 @@ class StreamSpec extends AnyFunSuite with Matchers {
     stream.take(1).toList shouldEqual Success(List(1))
   }
 
+  test("drop") {
+    Stream.lift[Id, Int](0).drop(3).toList shouldEqual List.empty
+
+    Stream[Id].many(1, 2, 3).drop(1).toList shouldEqual List(2, 3)
+
+    Stream.empty[Id, Int].drop(1).toList shouldEqual List.empty
+  }
+
   test("first") {
     Stream[Id].single(0).first shouldEqual Some(0)
     Stream.empty[Id, Int].first shouldEqual None

@@ -213,6 +213,29 @@ object Stream { self =>
     }
 
 
+    def drop(n: Long)(implicit F: Monad[F]): Stream[F, A] = {
+      if (n <= 0) self
+      else new Stream[F, A] {
+        def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
+          self
+            .foldWhileM((l, n)) { case ((l, n), a) =>
+              if (n == 0) {
+                f(l, a).map {
+                  case a: Right[L, R] => a.asRight[(L, Long)]
+                  case Left(l)        => (l, n).asLeft[Either[L, R]]
+                }
+              } else {
+                (l, n - 1).asLeft[Either[L, R]].pure[F]
+              }
+            }
+            .map {
+              case Left((a, _)) => a.asLeft[R]
+              case Right(a)     => a
+            }
+        }
+      }
+    }
+
     def first(implicit F: Applicative[F]): F[Option[A]] = {
       for {
         result <- foldWhile(none[A]) { (_, a) => a.some.asRight[Option[A]] }
