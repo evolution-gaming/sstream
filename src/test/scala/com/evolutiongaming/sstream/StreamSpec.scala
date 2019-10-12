@@ -259,4 +259,10 @@ class StreamSpec extends AnyFunSuite with Matchers {
     stream.take(3).toList.unsafeRunSync() shouldEqual List(0, 1, 2)
     Try { stream.take(4).toList.unsafeRunSync() } shouldEqual Failure(error)
   }
+
+  test("concat") {
+    val stream = Stream[Id].many(1, 2) concat Stream[Id].many(3, 4)
+    stream.toList shouldEqual List(1, 2, 3, 4)
+    stream.take(3).toList shouldEqual List(1, 2, 3)
+  }
 }

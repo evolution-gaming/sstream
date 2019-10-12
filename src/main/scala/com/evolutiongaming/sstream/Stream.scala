@@ -2,6 +2,7 @@ package com.evolutiongaming.sstream
 
 import cats.effect.{Bracket, Resource, Sync}
 import cats.implicits._
+import cats.kernel.Monoid
 import cats.{Applicative, FlatMap, Monad, StackSafeMonad, ~>}
 
 import scala.util.{Left, Right}
@@ -23,6 +24,14 @@ object Stream { self =>
     def pure[A](a: A) = single[F, A](a)
 
     override def map[A, B](fa: Stream[F, A])(f: A => B) = fa.map(f)
+  }
+
+
+  implicit def monoidStream[F[_] : Monad, A]: Monoid[Stream[F, A]] = new Monoid[Stream[F, A]] {
+
+    def empty = Stream.empty[F, A]
+
+    def combine(x: Stream[F, A], y: Stream[F, A]) = x concat y
   }
 
 
@@ -295,6 +304,17 @@ object Stream { self =>
 
 
     def withFilter(f: A => Boolean)(implicit F: Applicative[F]): Stream[F, A] = filter(f)
+
+
+    def concat[B >: A](stream: Stream[F, B])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
+
+      def foldWhileM[L, R](l: L)(f: (L, B) => F[Either[L, R]]) = {
+        self.foldWhileM(l)(f).flatMap {
+          case Left(l)        => stream.foldWhileM(l)(f)
+          case a: Right[L, R] => a.leftCast[L].pure[F]
+        }
+      }
+    }
 
 
     def zipWithIndex(implicit F: Monad[F]): Stream[F, (A, Long)] = {

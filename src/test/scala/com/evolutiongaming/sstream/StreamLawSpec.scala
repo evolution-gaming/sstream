@@ -2,6 +2,7 @@ package com.evolutiongaming.sstream
 
 
 import cats.implicits._
+import cats.kernel.laws.discipline.MonoidTests
 import cats.laws.discipline.MonadTests
 import cats.{Eq, Eval}
 import org.scalacheck.Arbitrary
@@ -25,4 +26,6 @@ class StreamLawSpec extends AnyFunSuite with Discipline {
     }
 
   checkAll("Stream.MonadLaws", MonadTests[Stream[Eval, *]].stackUnsafeMonad[Int, Int, String])
+
+  checkAll("Stream.MonoidLaws", MonoidTests[Stream[Eval, Int]].monoid)
 }
