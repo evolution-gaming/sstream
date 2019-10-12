@@ -309,10 +309,12 @@ object Stream { self =>
     def concat[B >: A](stream: Stream[F, B])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f: (L, B) => F[Either[L, R]]) = {
-        self.foldWhileM(l)(f).flatMap {
-          case Left(l)        => stream.foldWhileM(l)(f)
-          case a: Right[L, R] => a.leftCast[L].pure[F]
-        }
+        self
+          .foldWhileM(l)(f)
+          .flatMap {
+            case Left(l)        => stream.foldWhileM(l)(f)
+            case a: Right[L, R] => a.leftCast[L].pure[F]
+          }
       }
     }
 
@@ -320,7 +322,9 @@ object Stream { self =>
     def handleErrorWith[E](f: E => Stream[F, A])(implicit F: ApplicativeError[F, E]): Stream[F, A] = new Stream[F, A] {
 
       def foldWhileM[L, R](l: L)(f1: (L, A) => F[Either[L, R]]) = {
-        self.foldWhileM(l)(f1).handleErrorWith { a => f(a).foldWhileM(l)(f1) }
+        self
+          .foldWhileM(l)(f1)
+          .handleErrorWith { a => f(a).foldWhileM(l)(f1) }
       }
     }
 
