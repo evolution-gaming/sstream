@@ -12,6 +12,8 @@ import scala.util.{Failure, Success, Try}
 
 class StreamSpec extends AnyFunSuite with Matchers {
 
+  private val error: Throwable = new RuntimeException with NoStackTrace
+
   test("apply resource") {
 
     sealed trait Action
@@ -136,7 +138,6 @@ class StreamSpec extends AnyFunSuite with Matchers {
 
     Stream[Id].many(1, 2, 3).take(1).toList shouldEqual List(1)
 
-    val error = new RuntimeException with NoStackTrace
     val stream = for {
       a <- Stream[Try].apply(List(Success(1), Failure(error)))
       a <- Stream.lift(a)
@@ -252,7 +253,6 @@ class StreamSpec extends AnyFunSuite with Matchers {
   }
 
   test("fromIterator") {
-    val error = new RuntimeException with NoStackTrace
     val list = List(0.pure[Try], 1.pure[Try], 2.pure[Try], error.raiseError[Try, Int])
     def iterator = IO.delay { list.iterator.map(_.get) }
     val stream = Stream.fromIterator(iterator)
@@ -264,5 +264,12 @@ class StreamSpec extends AnyFunSuite with Matchers {
     val stream = Stream[Id].many(1, 2) concat Stream[Id].many(3, 4)
     stream.toList shouldEqual List(1, 2, 3, 4)
     stream.take(3).toList shouldEqual List(1, 2, 3)
+  }
+
+  test("handleErrorWith") {
+    Stream
+      .lift(error.raiseError[Try, Unit])
+      .handleErrorWith { _: Throwable => Stream.empty[Try, Unit]}
+      .toList shouldEqual List.empty.pure[Try]
   }
 }

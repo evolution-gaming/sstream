@@ -3,7 +3,7 @@ package com.evolutiongaming.sstream
 import cats.effect.{Bracket, Resource, Sync}
 import cats.implicits._
 import cats.kernel.Monoid
-import cats.{Applicative, FlatMap, Monad, StackSafeMonad, ~>}
+import cats.{Applicative, ApplicativeError, FlatMap, Monad, StackSafeMonad, ~>}
 
 import scala.util.{Left, Right}
 
@@ -313,6 +313,14 @@ object Stream { self =>
           case Left(l)        => stream.foldWhileM(l)(f)
           case a: Right[L, R] => a.leftCast[L].pure[F]
         }
+      }
+    }
+
+
+    def handleErrorWith[E](f: E => Stream[F, A])(implicit F: ApplicativeError[F, E]): Stream[F, A] = new Stream[F, A] {
+
+      def foldWhileM[L, R](l: L)(f1: (L, A) => F[Either[L, R]]) = {
+        self.foldWhileM(l)(f1).handleErrorWith { a => f(a).foldWhileM(l)(f1) }
       }
     }
 
