@@ -272,4 +272,15 @@ class StreamSpec extends AnyFunSuite with Matchers {
       .handleErrorWith { _: Throwable => Stream.empty[Try, Unit]}
       .toList shouldEqual List.empty.pure[Try]
   }
+
+  test("foldMapCmdM") {
+    Stream[Id]
+      .repeat(0)
+      .foldMapCmd(0) { (s, a) =>
+        if (s < 1) (s + 1, Stream.Cmd.skip)
+        else if (s == 1) (s + 1, Stream.Cmd.take(a))
+        else (s, Stream.Cmd.stop)
+      }
+      .toList shouldEqual List(0)
+  }
 }
