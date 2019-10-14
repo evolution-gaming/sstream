@@ -134,6 +134,10 @@ class StreamSpec extends AnyFunSuite with Matchers {
   }
 
   test("take") {
+    Stream[Id].empty[Int].take(3).toList shouldEqual List.empty
+
+    Stream[Id].single(1).take(-1).toList shouldEqual List.empty
+
     Stream.lift[Id, Int](0).take(3).toList shouldEqual List(0)
 
     Stream[Id].many(1, 2, 3).take(1).toList shouldEqual List(1)
@@ -273,7 +277,7 @@ class StreamSpec extends AnyFunSuite with Matchers {
       .toList shouldEqual List.empty.pure[Try]
   }
 
-  test("foldMapCmdM") {
+  test("foldMapCmd") {
     Stream[Id]
       .repeat(0)
       .foldMapCmd(0) { (s, a) =>
@@ -282,5 +286,120 @@ class StreamSpec extends AnyFunSuite with Matchers {
         else (s, Stream.Cmd.stop)
       }
       .toList shouldEqual List(0)
+  }
+
+  test("stateful") {
+    Stream[Id]
+      .repeat(0)
+      .statefulM(0) { (s, a) =>
+        if (s == 0) ((s + 1).some, Stream[Id].empty[String])
+        else if (s == 1) ((s + 1).some, Stream[Id].many("first", ""))
+        else if (s == 2) ((s + 1).some, Stream[Id].single(a.toString))
+        else (none[Int], Stream[Id].single("last"))
+      }
+      .toList shouldEqual List("first", "", "0", "last")
+  }
+
+  test("statefulM") {
+    Stream[Id]
+      .repeat(0)
+      .stateful(0) { (s, a) =>
+        if (s == 0) ((s + 1).some, Stream[Id].empty[String])
+        else if (s == 1) ((s + 1).some, Stream[Id].many("first", ""))
+        else if (s == 2) ((s + 1).some, Stream[Id].single(a.toString))
+        else (none[Int], Stream[Id].single("last"))
+      }
+      .toList shouldEqual List("first", "", "0", "last")
+  }
+
+  test("stateless") {
+    Stream[Id]
+      .repeat(())
+      .zipWithIndex
+      .map { case (_, idx) => idx }
+      .stateless { a =>
+        if (a == 0) (true, Stream[Id].empty[String])
+        else if (a == 1) (true, Stream[Id].many("first", ""))
+        else if (a == 2) (true, Stream[Id].single(a.toString))
+        else (false, Stream[Id].single("last"))
+      }
+      .toList shouldEqual List("first", "", "2", "last")
+  }
+
+  test("statelessM") {
+    Stream[Id]
+      .repeat(())
+      .zipWithIndex
+      .map { case (_, idx) => idx }
+      .statelessM { a =>
+        if (a == 0) (true, Stream[Id].empty[String])
+        else if (a == 1) (true, Stream[Id].many("first", ""))
+        else if (a == 2) (true, Stream[Id].single(a.toString))
+        else (false, Stream[Id].single("last"))
+      }
+      .toList shouldEqual List("first", "", "2", "last")
+  }
+
+  test("flatMapLast") {
+    Stream[Id]
+      .empty[Int]
+      .flatMapLast { a => Stream[Id].apply(a) }
+      .toList shouldEqual List.empty
+    Stream[Id]
+      .many(0, 1, 2)
+      .flatMapLast { a => Stream[Id].apply(a) }
+      .toList shouldEqual List(0, 1, 2, 2)
+  }
+
+  test("fold") {
+    Stream[Id]
+      .repeat(1)
+      .take(10)
+      .fold(0) { _ + _ } shouldEqual 10
+  }
+
+  test("foldM") {
+    Stream[Id]
+      .repeat(1)
+      .take(10)
+      .foldM(0) { _ + _ } shouldEqual 10
+  }
+
+  test("foldMapM") {
+    Stream[Id]
+      .repeat(1)
+      .take(3)
+      .foldMapM(0) { (s, b) =>
+        val b1 = s + b
+        (b1, b1.toString)
+      }
+      .toList shouldEqual List("1", "2", "3")
+  }
+
+  test("foldMap") {
+    Stream[Id]
+      .repeat(1)
+      .take(3)
+      .foldMap(0) { (a, b) =>
+        val b = a + 1
+        (b, b.toString)
+      }
+      .toList shouldEqual List("1", "2", "3")
+  }
+
+  test("foldLeft") {
+    Stream[Id]
+      .repeat(1)
+      .take(10)
+      .foldLeft(0) { _ + _ }
+      .last shouldEqual Some(10)
+  }
+
+  test("foldLeftM") {
+    Stream[Id]
+      .repeat(1)
+      .take(10)
+      .foldLeftM(0) { (a, b) => a + b }
+      .last shouldEqual Some(10)
   }
 }

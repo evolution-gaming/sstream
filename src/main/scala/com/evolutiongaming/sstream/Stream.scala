@@ -3,7 +3,7 @@ package com.evolutiongaming.sstream
 import cats.effect.{Bracket, Resource, Sync}
 import cats.implicits._
 import cats.kernel.Monoid
-import cats.{Applicative, ApplicativeError, FlatMap, Monad, StackSafeMonad, ~>}
+import cats.{Applicative, ApplicativeError, FlatMap, Functor, Monad, StackSafeMonad, ~>}
 
 import scala.util.{Left, Right}
 
@@ -29,7 +29,7 @@ object Stream { self =>
 
   implicit def monoidStream[F[_] : Monad, A]: Monoid[Stream[F, A]] = new Monoid[Stream[F, A]] {
 
-    def empty = Stream.empty[F, A]
+    def empty = Stream.empty
 
     def combine(x: Stream[F, A], y: Stream[F, A]) = x concat y
   }
@@ -42,16 +42,14 @@ object Stream { self =>
   def repeat[F[_], A](fa: F[A])(implicit F: Monad[F]): Stream[F, A] = new Stream[F, A] {
 
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
-      for {
-        r <- l.tailRecM { l =>
+      l
+        .tailRecM { l =>
           for {
             a <- fa
             r <- f(l, a)
           } yield r
         }
-      } yield {
-        r.asRight
-      }
+        .map { _.asRight }
     }
   }
 
@@ -96,16 +94,16 @@ object Stream { self =>
 
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
       l.tailRecM[F, Either[L, R]] { l =>
-          for {
-            a <- a
-            a <- a.fold { l.asLeft[R].asRight[L].pure[F] } { a =>
-              f(l, a).map {
-                case l: Left[L, R]  => l.rightCast[Either[L, R]]
-                case r: Right[L, R] => r.asRight[L]
-              }
+        for {
+          a <- a
+          a <- a.fold { l.asLeft[R].asRight[L].pure[F] } { a =>
+            f(l, a).map {
+              case l: Left[L, R]  => l.rightCast[Either[L, R]]
+              case r: Right[L, R] => r.asRight[L]
             }
-          } yield a
-        }
+          }
+        } yield a
+      }
     }
   }
 
@@ -118,7 +116,7 @@ object Stream { self =>
       fromResource(resource)
     }
 
-    def empty[A]: Stream[F, A] = Stream.empty[F, A](F)
+    def empty[A]: Stream[F, A] = Stream.empty(F)
 
     def single[A](a: A): Stream[F, A] = Stream.single[F, A](a)
 
@@ -128,6 +126,7 @@ object Stream { self =>
   }
 
 
+  @deprecated("Use `statefulM` instead", "0.0.10")
   sealed abstract class Cmd[+A] extends Product
 
   object Cmd {
@@ -194,67 +193,26 @@ object Stream { self =>
 
 
     def take(n: Long)(implicit F: Monad[F]): Stream[F, A] = {
-      if (n <= 0) empty[F, A]
-      else new Stream[F, A] {
-        def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
-          self
-            .foldWhileM((l, n)) { case ((l, n), a) =>
-              if (n == 0) {
-                l.asLeft[R].asRight[(L, Long)].pure[F]
-              } else if (n == 1) {
-                f(l, a).map { _.asRight[(L, Long)] }
-              } else {
-                f(l, a).map {
-                  case Left(l)        => (l, n - 1).asLeft[Either[L, R]]
-                  case r: Right[L, R] => r.asRight[(L, Long)]
-                }
-              }
-            }
-            .map {
-              case Left((a, _)) => a.asLeft[R]
-              case Right(a)     => a
-            }
+      if (n <= 0) empty
+      else stateful(n) { (n, a) =>
+        if (n == 0) {
+          (none[Long], empty)
+        } else if (n == 1) {
+          (none[Long], single(a))
+        } else {
+          ((n - 1).some, single(a))
         }
-      }
-    }
-
-
-    def foldLeftM[B](b: B)(f: (B, A) => Stream[F, B])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
-
-      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
-        self
-          .foldWhileM((l, b)) { case ((l, b), a) =>
-            f(b, a)
-              .foldWhileM(l)(f1)
-              .map {
-                case Left(l)        => (l, b).asLeft[R]
-                case r: Right[L, R] => r.leftCast[(L, B)]
-              }
-          }
-          .map { _.leftMap { case (l, _) => l } }
       }
     }
 
 
     def drop(n: Long)(implicit F: Monad[F]): Stream[F, A] = {
       if (n <= 0) self
-      else new Stream[F, A] {
-        def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
-          self
-            .foldWhileM((l, n)) { case ((l, n), a) =>
-              if (n == 0) {
-                f(l, a).map {
-                  case Left(l)        => (l, n).asLeft[Either[L, R]]
-                  case r: Right[L, R] => r.asRight[(L, Long)]
-                }
-              } else {
-                (l, n - 1).asLeft[Either[L, R]].pure[F]
-              }
-            }
-            .map {
-              case Left((a, _)) => a.asLeft[R]
-              case Right(a)     => a
-            }
+      else stateful(n) { (n, a) =>
+        if (n == 0) {
+          (n.some, single(a))
+        } else {
+          ((n - 1).some, empty)
         }
       }
     }
@@ -348,102 +306,58 @@ object Stream { self =>
     }
 
 
-    def dropWhile(f: A => Boolean)(implicit F: Monad[F]): Stream[F, A] = new Stream[F, A] {
+    def dropWhile(f: A => Boolean)(implicit F: Monad[F]): Stream[F, A] = {
+      stateful(true) { (drop, a) =>
+        if (drop && f(a)) (drop.some, empty)
+        else (false.some, single(a))
+      }
+    }
 
-      def foldWhileM[L, R](l: L)(f1: (L, A) => F[Either[L, R]]) = {
-        self
-          .foldWhileM((l, true)) { case ((l, drop), a) =>
-            if (drop && f(a)) {
-              (l, drop).asLeft[R].pure[F]
-            } else {
-              f1(l, a).map {
-                case Left(l)        => (l, false).asLeft[R]
-                case r: Right[L, R] => r.leftCast[(L, Boolean)]
-              }
-            }
-          }
-          .map {
-            case Left((l, _))              => l.asLeft[R]
-            case r: Right[(L, Boolean), R] => r.leftCast[L]
-          }
+    def takeWhile(f: A => Boolean)(implicit F: Monad[F]): Stream[F, A] = {
+      stateless { a =>
+        if (f(a)) (true, single(a))
+        else (false, empty)
+      }
+    }
+    
+
+    def foldMapM[B, S](s: S)(f: (S, A) => F[(S, B)])(implicit F: Monad[F]): Stream[F, B] = {
+      statefulM(s) { (s, a) =>
+        f(s, a).map { case (s, b) =>
+          (s.some, single(b))
+        }
+      }
+    }
+
+    def foldMap[B, S](s: S)(f: (S, A) => (S, B))(implicit F: Functor[F]): Stream[F, B] = {
+      stateful(s) { (s, a) =>
+        val (s1, b) = f(s, a)
+        (s1.some, single(b))
       }
     }
 
 
-    def takeWhile(f: A => Boolean)(implicit F: Monad[F]): Stream[F, A] = new Stream[F, A] {
-
-      def foldWhileM[L, R](l: L)(f1: (L, A) => F[Either[L, R]]) = {
-        self
-          .foldWhileM(l) { case (l, a) =>
-            if (f(a)) {
-              f1(l, a).map {
-                case l: Left[L, R]  => l.rightCast[Either[L, R]]
-                case r: Right[L, R] => r.asRight[L]
-              }
-            } else {
-              l.asLeft[R].asRight[L].pure[F]
-            }
+    @deprecated("Use `statefulM` instead", "0.0.10")
+    def foldMapCmdM[B, S](s: S)(f: (S, A) => F[(S, Cmd[B])])(implicit F: Monad[F]): Stream[F, B] = {
+      statefulM(s) { (s, a) =>
+        f(s, a).map { case (s, c) =>
+          c match {
+            case c: Cmd.Take[B] => (s.some, single(c.value))
+            case Cmd.Skip       => (s.some, empty)
+            case Cmd.Stop       => (none[S], empty)
           }
-          .map { _.joinRight }
+        }
       }
     }
 
 
-    def foldMapM[B, S](s: S)(f: (S, A) => F[(S, B)])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
-
-      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
-        self
-          .foldWhileM((l, s)) { case ((l, s), a) =>
-            for {
-              ab     <- f(s, a)
-              (s, b)  = ab
-              result <- f1(l, b)
-            } yield {
-              result.leftMap { l => (l, s) }
-            }
-          }
-          .map { _.leftMap { case (l, _) => l } }
-      }
-    }
-
-
-    def foldMap[B, S](s: S)(f: (S, A) => (S, B))(implicit F: Monad[F]): Stream[F, B] = {
-      foldMapM(s) { (s, a) => f(s, a).pure[F] }
-    }
-
-
-    def foldMapCmdM[B, S](s: S)(f: (S, A) => F[(S, Cmd[B])])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
-
-      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
-
-        self
-          .foldWhileM((l, s)) { case ((l, s), a) =>
-            for {
-              ab       <- f(s, a)
-              (s, cmd)  = ab
-              result   <- cmd match {
-                case Cmd.Skip         => (l, s).asLeft[Either[L, R]].pure[F]
-                case Cmd.Stop         => l.asLeft[R].asRight[(L, S)].pure[F]
-                case cmd: Cmd.Take[A] => f1(l, cmd.value).map {
-                  case Left(l)        => (l, s).asLeft[Either[L, R]]
-                  case r: Right[L, R] => r.asRight[(L, S)]
-                }
-              }
-            } yield result
-          }
-          .map {
-            case Left((l, _)) => l.asLeft[R]
-            case Right(r)     => r
-          }
-      }
-    }
-
-
+    @deprecated("Use `statefulM` instead", "0.0.10")
     def foldMapCmd[B, S](s: S)(f: (S, A) => (S, Cmd[B]))(implicit F: Monad[F]): Stream[F, B] = {
       foldMapCmdM(s) { (s, a) => f(s, a).pure[F] }
     }
 
 
+    @deprecated("Use `statefulM` instead", "0.0.10")
     def mapCmdM[B](f: A => F[Cmd[B]])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
@@ -468,6 +382,7 @@ object Stream { self =>
     }
 
 
+    @deprecated("Use `statefulM` instead", "0.0.10")
     def mapCmd[B](f: A => Cmd[B])(implicit F: Monad[F]): Stream[F, B] = {
       mapCmdM { a => f(a).pure[F] }
     }
@@ -478,6 +393,153 @@ object Stream { self =>
       self
         .foldWhileM(()) { (_, _) => unit }
         .map(_.merge)
+    }
+
+
+    def stateful[S, B](
+      s: S)(
+      f: (S, A) => (Option[S], Stream[F, B]))(implicit
+      F: Functor[F]
+    ): Stream[F, B] = new Stream[F, B] {
+
+      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        self
+          .foldWhileM((l, s)) { case ((l, s0), a) =>
+            val (s, stream) = f(s0, a)
+            stream
+              .foldWhileM(l)(f1)
+              .map {
+                case Left(l)        => s match {
+                  case Some(s) => (l, s).asLeft[Either[L, R]]
+                  case None    => l.asLeft[R].asRight[(L, S)]
+                }
+                case r: Right[L, R] => r.asRight[(L, S)]
+              }
+          }
+          .map {
+            case Left((l, _)) => l.asLeft[R]
+            case Right(r)     => r
+          }
+      }
+    }
+
+    def statefulM[S, B](
+      s: S)(
+      f: (S, A) => F[(Option[S], Stream[F, B])])(implicit
+      F: FlatMap[F]
+    ): Stream[F, B] = new Stream[F, B] {
+
+      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        self
+          .foldWhileM((l, s)) { case ((l, s), a) =>
+            f(s, a).flatMap { case (s, stream) =>
+              stream
+                .foldWhileM(l)(f1)
+                .map {
+                  case Left(l)        => s match {
+                    case Some(s) => (l, s).asLeft[Either[L, R]]
+                    case None    => l.asLeft[R].asRight[(L, S)]
+                  }
+                  case r: Right[L, R] => r.asRight[(L, S)]
+                }
+            }
+          }
+          .map {
+            case Left((l, _)) => l.asLeft[R]
+            case Right(r)     => r
+          }
+      }
+    }
+
+
+    def stateless[B](
+      f: A => (Boolean, Stream[F, B]))(implicit
+      F: Functor[F]
+    ): Stream[F, B] = new Stream[F, B] {
+
+      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        self
+          .foldWhileM(l) { (l, a) =>
+            val (continue, stream) = f(a)
+            stream
+              .foldWhileM(l)(f1)
+              .map {
+                case l: Left[L, R]  => if (continue) l.rightCast[Either[L, R]] else l.asRight[L]
+                case r: Right[L, R] => r.asRight[L]
+              }
+          }
+          .map {
+            case l: Left[L, Either[L, R]] => l.rightCast[R]
+            case Right(r)                 => r
+          }
+      }
+    }
+
+    def statelessM[B](
+      f: A => F[(Boolean, Stream[F, B])])(implicit
+      F: FlatMap[F]
+    ): Stream[F, B] = new Stream[F, B] {
+
+      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        self
+          .foldWhileM(l) { (l, a) =>
+            f(a).flatMap { case (continue, stream) =>
+              stream
+                .foldWhileM(l)(f1)
+                .map {
+                  case l: Left[L, R]  => if (continue) l.rightCast[Either[L, R]] else l.asRight[L]
+                  case r: Right[L, R] => r.asRight[L]
+              }
+            }
+          }
+          .map {
+            case l: Left[L, Either[L, R]] => l.rightCast[R]
+            case Right(r)                 => r
+          }
+      }
+    }
+
+
+    def foldLeftM[B](b: B)(f: (B, A) => F[B])(implicit F: FlatMap[F]): Stream[F, B] = {
+      statefulM(b) { (b, a) =>
+        f(b, a).map { b =>
+          (b.some, Stream.single[F, B](b))
+        }
+      }
+    }
+
+
+    def foldLeft[B](b: B)(f: (B, A) => B)(implicit F: Functor[F]): Stream[F, B] = new Stream[F, B] {
+
+      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        self
+          .foldWhileM((l, b)) { case ((l, b), a) =>
+            val b1 = f(b, a)
+            f1(l, b1).map {
+              case Left(l)        => (l, b1).asLeft[R]
+              case r: Right[L, R] => r.leftCast[(L, B)]
+            }
+          }
+          .map { _.leftMap { case (l, _) => l } }
+      }
+    }
+
+
+    def flatMapLast[B >: A](f: Option[A] => Stream[F, B])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
+
+      def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        self
+          .foldWhileM((l, none[A])) { case ((l, _), a) =>
+            f1(l, a).map {
+              case Left(l)        => (l, a.some).asLeft[R]
+              case a: Right[L, R] => a.leftCast[(L, Option[A])]
+            }
+          }
+          .flatMap {
+            case Left((l, a))                => f(a).foldWhileM(l)(f1)
+            case a: Right[(L, Option[A]), R] => a.leftCast[L].pure[F]
+          }
+      }
     }
   }
 

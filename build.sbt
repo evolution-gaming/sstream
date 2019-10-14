@@ -34,3 +34,5 @@ libraryDependencies += compilerPlugin(`kind-projector` cross CrossVersion.binary
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
 
 releaseCrossBuild := true
+
+scalacOptsFailOnWarn := Some(false)
