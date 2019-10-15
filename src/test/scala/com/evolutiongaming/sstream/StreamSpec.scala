@@ -402,4 +402,13 @@ class StreamSpec extends AnyFunSuite with Matchers {
       .foldLeftM(0) { (a, b) => a + b }
       .last shouldEqual Some(10)
   }
+
+  test("repeat foldLeftM takeWhile take") {
+    Stream[Id]
+      .repeat(1)
+      .foldLeftM(0) { (a, b) => a + b }
+      .takeWhile(_ <= 3)
+      .take(10)
+      .toList shouldEqual List(1, 2, 3)
+  }
 }
