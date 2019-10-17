@@ -541,6 +541,39 @@ object Stream { self =>
           }
       }
     }
+
+
+    def chain(f: A => Option[Stream[F, A]])(implicit F: Monad[F]): Stream[F, A] = {
+      chainM { a => f(a).pure[F] }
+    }
+
+    def chainM(f: A => F[Option[Stream[F, A]]])(implicit F: Monad[F]): Stream[F, A] = new Stream[F, A] {
+
+      def foldWhileM[L, R](l: L)(f1: (L, A) => F[Either[L, R]]) = {
+
+        def drain(stream: Stream[F, A], l: L) = {
+          stream.foldWhileM((l, none[A])) { case ((l, _), a) =>
+            f1(l, a).map { _.leftMap { l => (l, a.some) } }
+          }
+        }
+
+        drain(self, l).flatMap {
+          case Left((l, Some(a))) =>
+            (l, a).tailRecM[F, Either[L, R]] { case (l, a) =>
+              f(a).flatMap {
+                case Some(stream) => drain(stream, l).map {
+                  case Left((l, Some(a)))          => (l, a).asLeft[Either[L, R]]
+                  case Left((l, None))             => l.asLeft[R].asRight[(L, A)]
+                  case r: Right[(L, Option[A]), R] => r.leftCast[L].asRight[(L, A)]
+                }
+                case None         => l.asLeft[R].asRight[(L, A)].pure[F]
+              }
+            }
+          case Left((l, None))             => l.asLeft[R].pure[F]
+          case r: Right[(L, Option[A]), R] => r.leftCast[L].pure[F]
+        }
+      }
+    }
   }
 
 

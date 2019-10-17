@@ -380,10 +380,7 @@ class StreamSpec extends AnyFunSuite with Matchers {
     Stream[Id]
       .repeat(1)
       .take(3)
-      .foldMap(0) { (a, b) =>
-        val b = a + 1
-        (b, b.toString)
-      }
+      .foldMap(1) { (a, b) => (a + b, a.toString) }
       .toList shouldEqual List("1", "2", "3")
   }
 
@@ -409,6 +406,20 @@ class StreamSpec extends AnyFunSuite with Matchers {
       .foldLeftM(0) { (a, b) => a + b }
       .takeWhile(_ <= 3)
       .take(10)
+      .toList shouldEqual List(1, 2, 3)
+  }
+
+  test("chain") {
+    Stream[Id]
+      .single(1)
+      .chain { a => if (a <= 2) Stream[Id].many(a + 1).some else none }
+      .toList shouldEqual List(1, 2, 3)
+  }
+  
+  test("chainM") {
+    Stream[Id]
+      .single(1)
+      .chainM { a => if (a <= 2) Stream[Id].many(a + 1).some else none }
       .toList shouldEqual List(1, 2, 3)
   }
 }
