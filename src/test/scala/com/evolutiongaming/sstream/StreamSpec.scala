@@ -422,4 +422,10 @@ class StreamSpec extends AnyFunSuite with Matchers {
       .chainM { a => if (a <= 2) Stream[Id].many(a + 1).some else none }
       .toList shouldEqual List(1, 2, 3)
   }
+
+  test("foreach") {
+    var a = 0
+    Stream[Id].apply(List(1, 2, 3)).foreach { a = _ }
+    a shouldEqual 3
+  }
 }

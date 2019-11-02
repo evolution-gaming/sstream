@@ -403,6 +403,14 @@ object Stream { self =>
     }
 
 
+    def foreach(f: A => F[Unit])(implicit F: Functor[F]): F[Unit] = {
+      val unit = ().asLeft[Unit]
+      self
+        .foldWhileM(()) { case (_, a) => f(a) as unit }
+        .map(_.merge)
+    }
+
+
     def stateful[S, B](
       s: S)(
       f: (S, A) => (Option[S], Stream[F, B]))(implicit
