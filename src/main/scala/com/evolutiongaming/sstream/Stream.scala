@@ -84,13 +84,13 @@ object Stream { self =>
   def fromIterator[F[_] : Sync, A](iterator: F[Iterator[A]]): Stream[F, A] = {
     for {
       as <- Stream.lift(iterator)
-      fa  = Sync[F].delay { if (as.hasNext) as.next().some else none[A] }
-      a  <- untilNone(fa)
+      a   = Sync[F].delay { if (as.hasNext) as.next().some else none[A] }
+      a  <- whileSome(a)
     } yield a
   }
 
 
-  def untilNone[F[_] : Monad, A](a: F[Option[A]]): Stream[F, A] = new Stream[F, A] {
+  def whileSome[F[_] : Monad, A](a: F[Option[A]]): Stream[F, A] = new Stream[F, A] {
 
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
       l.tailRecM[F, Either[L, R]] { l =>
@@ -108,6 +108,11 @@ object Stream { self =>
       }
     }
   }
+
+
+  @deprecated("use whileSome instead", "0.1.0")
+  def untilNone[F[_] : Monad, A](a: F[Option[A]]): Stream[F, A] = whileSome(a)
+  
 
 
   final class Builders[F[_]](val F: Monad[F]) extends AnyVal {
