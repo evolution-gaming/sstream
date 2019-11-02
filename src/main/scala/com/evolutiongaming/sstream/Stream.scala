@@ -96,7 +96,9 @@ object Stream { self =>
       l.tailRecM[F, Either[L, R]] { l =>
         for {
           a <- a
-          a <- a.fold { l.asLeft[R].asRight[L].pure[F] } { a =>
+          a <- a.fold {
+            l.asLeft[R].asRight[L].pure[F]
+          } { a =>
             f(l, a).map {
               case l: Left[L, R]  => l.rightCast[Either[L, R]]
               case r: Right[L, R] => r.asRight[L]
