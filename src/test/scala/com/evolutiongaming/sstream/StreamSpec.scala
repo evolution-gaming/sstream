@@ -4,7 +4,7 @@ import cats.data.IndexedStateT
 import cats.effect.{Bracket, ExitCase, IO, Resource}
 import cats.implicits._
 import cats.{Id, MonadError, ~>}
-import org.scalatest.Matchers
+import org.scalatest.matchers.should.Matchers
 import org.scalatest.funsuite.AnyFunSuite
 
 import scala.util.control.NoStackTrace
