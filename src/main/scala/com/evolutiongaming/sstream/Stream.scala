@@ -7,8 +7,17 @@ import cats.{Applicative, ApplicativeError, FlatMap, Functor, Monad, StackSafeMo
 
 import scala.util.{Left, Right}
 
+/**
+ * Super simple interface for describing streaming capabilities.
+ * Used in API description.
+ * You might end up with gluing this with akka-streams or FS2 in attempt to gain more power and many more combinators
+ */
 trait Stream[F[_], A] {
 
+  /**
+   * Takes initial `L` and combines with all `A` until `Right[R]` is returned
+   * Returns `Left[L]` when there are no more `A` left
+   */
   def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]): F[Either[L, R]]
 }
 
@@ -112,7 +121,6 @@ object Stream { self =>
 
   @deprecated("use whileSome instead", "0.1.0")
   def untilNone[F[_] : Monad, A](a: F[Option[A]]): Stream[F, A] = whileSome(a)
-  
 
 
   final class Builders[F[_]](val F: Monad[F]) extends AnyVal {
@@ -326,7 +334,7 @@ object Stream { self =>
         else (false, empty)
       }
     }
-    
+
 
     def foldMapM[B, S](s: S)(f: (S, A) => F[(S, B)])(implicit F: Monad[F]): Stream[F, B] = {
       statefulM(s) { (s, a) =>
@@ -504,7 +512,7 @@ object Stream { self =>
                 .map {
                   case l: Left[L, R]  => if (continue) l.rightCast[Either[L, R]] else l.asRight[L]
                   case r: Right[L, R] => r.asRight[L]
-              }
+                }
             }
           }
           .map {
@@ -573,7 +581,7 @@ object Stream { self =>
         }
 
         drain(self, l).flatMap {
-          case Left((l, Some(a))) =>
+          case Left((l, Some(a)))          =>
             (l, a).tailRecM[F, Either[L, R]] { case (l, a) =>
               f(a).flatMap {
                 case Some(stream) => drain(stream, l).map {
