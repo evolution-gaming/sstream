@@ -10,6 +10,6 @@ object Dependencies {
     private val version = "2.1.1"
     val core   = "org.typelevel" %% "cats-core"   % version
     val laws   = "org.typelevel" %% "cats-laws"   % version
-    val effect = "org.typelevel" %% "cats-effect" % "2.1.2"
+    val effect = "org.typelevel" %% "cats-effect" % "2.1.3"
   }
 }
