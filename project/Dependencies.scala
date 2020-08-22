@@ -1,7 +1,7 @@
 import sbt._
 
 object Dependencies {
-  val scalatest              = "org.scalatest"              %% "scalatest"                 % "3.2.1"
+  val scalatest              = "org.scalatest"              %% "scalatest"                 % "3.2.2"
   val discipline             = "org.typelevel"              %% "discipline-scalatest"      % "2.0.0"
   val `scalacheck-shapeless` = "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % "1.2.5"
   val `kind-projector`       = "org.typelevel"               % "kind-projector"            % "0.10.3"
