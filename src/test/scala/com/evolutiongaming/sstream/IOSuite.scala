@@ -1,7 +1,6 @@
 package com.evolutiongaming.sstream
 
 import cats.effect.{Concurrent, ContextShift, IO, Timer}
-import cats.implicits._
 import org.scalatest.Succeeded
 
 import scala.concurrent.duration._
