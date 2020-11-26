@@ -1,7 +1,7 @@
 package com.evolutiongaming.sstream
 
 import cats.effect.{Bracket, Resource, Sync}
-import cats.implicits._
+import cats.syntax.all._
 import cats.kernel.Monoid
 import cats.{Applicative, ApplicativeError, FlatMap, Functor, Monad, StackSafeMonad, ~>}
 
