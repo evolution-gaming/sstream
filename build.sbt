@@ -16,7 +16,7 @@ bintrayOrganization := Some("evolutiongaming")
 
 scalaVersion := crossScalaVersions.value.head
 
-crossScalaVersions := Seq("2.13.1", "2.12.11")
+crossScalaVersions := Seq("2.13.4", "2.12.12")
 
 resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
 
@@ -29,7 +29,7 @@ libraryDependencies ++= Seq(
   `scalacheck-shapeless` % Test,
 )
 
-libraryDependencies += compilerPlugin(`kind-projector` cross CrossVersion.binary)
+libraryDependencies += compilerPlugin(`kind-projector` cross CrossVersion.full)
 
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
 
