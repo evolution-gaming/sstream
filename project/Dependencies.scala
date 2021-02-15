@@ -4,7 +4,7 @@ object Dependencies {
   val scalatest              = "org.scalatest"              %% "scalatest"                 % "3.2.3"
   val discipline             = "org.typelevel"              %% "discipline-scalatest"      % "2.1.0"
   val `scalacheck-shapeless` = "com.github.alexarchambault" %% "scalacheck-shapeless_1.14" % "1.2.5"
-  val `kind-projector`       = "org.typelevel"               % "kind-projector"            % "0.11.2"
+  val `kind-projector`       = "org.typelevel"               % "kind-projector"            % "0.11.3"
 
   object Cats {
     private val version = "2.3.0"
