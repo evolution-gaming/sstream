@@ -1,8 +1,8 @@
 package com.evolutiongaming.sstream
 
-import cats.effect.{Bracket, Resource, Sync}
-import cats.syntax.all._
+import cats.effect.{MonadCancel, Resource, Sync}
 import cats.kernel.Monoid
+import cats.syntax.all._
 import cats.{Applicative, ApplicativeError, FlatMap, Functor, Monad, StackSafeMonad, ~>}
 
 import scala.util.{Left, Right}
@@ -82,7 +82,7 @@ object Stream { self =>
   }
 
 
-  def fromResource[F[_], A](resource: Resource[F, A])(implicit F: Bracket[F, Throwable]): Stream[F, A] = new Stream[F, A] {
+  def fromResource[F[_], A](resource: Resource[F, A])(implicit F: MonadCancel[F, Throwable]): Stream[F, A] = new Stream[F, A] {
 
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
       resource.use(a => f(l, a))
@@ -127,7 +127,7 @@ object Stream { self =>
 
     def apply[G[_], A](ga: G[A])(implicit G: FoldWhile[G]): Stream[F, A] = from[F, G, A](ga)(G, F)
 
-    def apply[A](resource: Resource[F, A])(implicit F: Bracket[F, Throwable]): Stream[F, A] = {
+    def apply[A](resource: Resource[F, A])(implicit F: MonadCancel[F, Throwable]): Stream[F, A] = {
       fromResource(resource)
     }
 
