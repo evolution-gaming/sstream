@@ -8,17 +8,15 @@ homepage := Some(new URL("http://github.com/evolution-gaming/sstream"))
 
 startYear := Some(2019)
 
-organizationName := "Evolution Gaming"
+organizationName := "Evolution"
 
-organizationHomepage := Some(url("http://evolutiongaming.com"))
-
-bintrayOrganization := Some("evolutiongaming")
+organizationHomepage := Some(url("http://evolution.com"))
 
 scalaVersion := crossScalaVersions.value.head
 
 crossScalaVersions := Seq("2.13.4", "2.12.12")
 
-resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
+publishTo := Some(Resolver.evolutionReleases)
 
 libraryDependencies ++= Seq(
   Cats.core,
