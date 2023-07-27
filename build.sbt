@@ -14,7 +14,7 @@ organizationHomepage := Some(url("http://evolution.com"))
 
 scalaVersion := crossScalaVersions.value.head
 
-crossScalaVersions := Seq("2.13.4", "2.12.12")
+crossScalaVersions := Seq("3.3.0", "2.13.4", "2.12.12")
 
 publishTo := Some(Resolver.evolutionReleases)
 
@@ -24,10 +24,17 @@ libraryDependencies ++= Seq(
   Cats.laws % Test,
   scalatest % Test,
   discipline % Test,
-  `scalacheck-shapeless` % Test,
 )
 
-libraryDependencies += compilerPlugin(`kind-projector` cross CrossVersion.full)
+libraryDependencies ++= {
+  if (scalaVersion.value.startsWith("3")) Nil
+  else List(compilerPlugin(`kind-projector` cross CrossVersion.full))
+}
+
+ThisBuild / scalacOptions ++= {
+  if (scalaVersion.value.startsWith("3")) Seq("-Ykind-projector:underscores")
+  else Seq("-Xsource:3", "-P:kind-projector:underscore-placeholders")
+}
 
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
 

@@ -26,7 +26,7 @@ object Stream { self =>
   def apply[F[_]](implicit F: Monad[F]): Builders[F] = new Builders[F](F)
 
 
-  implicit def monadStream[F[_]]: Monad[Stream[F, *]] = new StackSafeMonad[Stream[F, *]] {
+  implicit def monadStream[F[_]]: Monad[Stream[F, _]] = new StackSafeMonad[Stream[F, _]] {
 
     def flatMap[A, B](fa: Stream[F, A])(f: A => Stream[F, B]) = fa.flatMap(f)
 
@@ -153,7 +153,7 @@ object Stream { self =>
     def skip[A]: Cmd[A] = Skip
 
 
-    final case class Take[A] private(value: A) extends Cmd[A]
+    final case class Take[+A] private[Cmd](value: A) extends Cmd[A]
 
     final case object Skip extends Cmd[Nothing]
 

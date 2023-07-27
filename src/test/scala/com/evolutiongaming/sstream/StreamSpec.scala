@@ -70,7 +70,8 @@ class StreamSpec extends AnyFunSuite with Matchers {
     }
 
 
-    implicit val MC = monadCancelOf[StateT](IndexedStateT.catsDataMonadErrorForIndexedStateT[Try, State, Throwable])
+    implicit val MC: MonadCancel[StateT, Throwable] =
+      monadCancelOf[StateT](IndexedStateT.catsDataMonadErrorForIndexedStateT[Try, State, Throwable])
 
     val increment = StateT { state =>
       val n = state.n + 1
@@ -270,7 +271,7 @@ class StreamSpec extends AnyFunSuite with Matchers {
   test("handleErrorWith") {
     Stream
       .lift(error.raiseError[Try, Unit])
-      .handleErrorWith { _: Throwable => Stream.empty[Try, Unit]}
+      .handleErrorWith { (_: Throwable) => Stream.empty[Try, Unit] }
       .toList shouldEqual List.empty.pure[Try]
   }
 
@@ -412,7 +413,7 @@ class StreamSpec extends AnyFunSuite with Matchers {
       .chain { a => if (a <= 2) Stream[Id].many(a + 1).some else none }
       .toList shouldEqual List(1, 2, 3)
   }
-  
+
   test("chainM") {
     Stream[Id]
       .single(1)
