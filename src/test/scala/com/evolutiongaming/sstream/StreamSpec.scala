@@ -1,11 +1,13 @@
 package com.evolutiongaming.sstream
 
 import cats.data.IndexedStateT
-import cats.effect.{Bracket, ExitCase, IO, Resource}
+import cats.effect.kernel.{CancelScope, Poll}
+import cats.effect.unsafe.implicits.global
+import cats.effect.{IO, MonadCancel, Resource}
 import cats.syntax.all._
 import cats.{Id, MonadError, ~>}
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
@@ -43,24 +45,7 @@ class StreamSpec extends AnyFunSuite with Matchers {
     }
 
 
-    def bracketOf[F[_]](implicit F: MonadError[F, Throwable]): Bracket[F, Throwable] = new Bracket[F, Throwable] {
-
-      def bracketCase[A, B](acquire: F[A])(use: A => F[B])(release: (A, ExitCase[Throwable]) => F[Unit]) = {
-
-        def onError(a: A, error: Throwable) = {
-          for {
-            _ <- release(a, ExitCase.error(error))
-            b <- raiseError[B](error)
-          } yield b
-        }
-
-        for {
-          a <- acquire
-          b <- use(a).handleErrorWith(e => onError(a, e))
-          _ <- release(a, ExitCase.complete)
-        } yield b
-      }
-
+    def monadCancelOf[F[_]](implicit F: MonadError[F, Throwable]): MonadCancel[F, Throwable] = new MonadCancel[F, Throwable] {
       def raiseError[A](e: Throwable) = F.raiseError(e)
 
       def handleErrorWith[A](fa: F[A])(f: Throwable => F[A]) = F.handleErrorWith(fa)(f)
@@ -70,10 +55,22 @@ class StreamSpec extends AnyFunSuite with Matchers {
       def tailRecM[A, B](a: A)(f: A => F[Either[A, B]]) = F.tailRecM(a)(f)
 
       def pure[A](a: A) = F.pure(a)
+
+      def rootCancelScope: CancelScope = CancelScope.Uncancelable
+
+      def forceR[A, B](fa: F[A])(fb: F[B]): F[B] = fa.attempt.flatMap(_ => fb)
+
+      def uncancelable[A](body: Poll[F] => F[A]): F[A] = body(new Poll[F] {
+        override def apply[X](fa: F[X]): F[X] = fa
+      })
+
+      def canceled: F[Unit] = F.unit
+
+      def onCancel[A](fa: F[A], fin: F[Unit]): F[A] = fa
     }
 
 
-    implicit val bracket = bracketOf[StateT](IndexedStateT.catsDataMonadErrorForIndexedStateT[Try, State, Throwable])
+    implicit val MC = monadCancelOf[StateT](IndexedStateT.catsDataMonadErrorForIndexedStateT[Try, State, Throwable])
 
     val increment = StateT { state =>
       val n = state.n + 1
