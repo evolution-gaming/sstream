@@ -14,10 +14,17 @@ import scala.util.{Left, Right}
  */
 trait Stream[F[_], A] {
 
-  /**
-   * Takes initial `L` and combines with all `A` until `Right[R]` is returned
-   * Returns `Left[L]` when there are no more `A` left
-   */
+  /** Takes initial `L` and combines with all `A` until `Right[R]` is returned
+    * by `f`.
+    *
+    * The stream calls `f` over and over with a new `A` value until either `f`
+    * returns `Right[R]` or there are no more `A` left in a stream. Each
+    * consecutive call to `f` will use `l` returned by a previous call to `f`.
+    *
+    * @return
+    *   `Right[R]` if `f` returned `Right[R]` or `Left[L]` if it never did, and
+    *   there are no more `A` values left.
+    */
   def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]): F[Either[L, R]]
 }
 
@@ -43,11 +50,38 @@ object Stream { self =>
     def combine(x: Stream[F, A], y: Stream[F, A]) = x concat y
   }
 
-
+  /** Stream of a single effectful `A` value.
+    *
+    * Example:
+    * {{{
+    * scala> import cats.effect.IO
+    * scala> import cats.effect.unsafe.implicits.global
+    * scala> import com.evolutiongaming.sstream.Stream
+    * scala> import scala.util.Random
+    * scala>
+    * scala> Stream.repeat(IO(Random.nextInt(5))).toList.unsafeRunSync()
+    * scala> val res0: List[Int] = List(3)
+    * }}}
+    */
   def lift[F[_], A](fa: F[A])(implicit monad: FlatMap[F]): Stream[F, A] = new Stream[F, A] {
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = fa.flatMap(f(l, _))
   }
 
+  /** Infinite stream of effectful `A` values.
+    *
+    * Example:
+    * {{{
+    * scala> import cats.effect.IO
+    * scala> import cats.effect.unsafe.implicits.global
+    * scala> import com.evolutiongaming.sstream.Stream
+    * scala> import scala.util.Random
+    * scala>
+    * scala> Stream.repeat(IO(Random.nextInt(5))).take(10).toList.unsafeRunSync()
+    * scala> val res0: List[Int] = List(1, 3, 0, 1, 0, 4, 1, 2, 0, 0)
+    * }}}
+    *
+    * @see [[Builders#repeat]] for a more convenient syntax.
+    */
   def repeat[F[_], A](fa: F[A])(implicit F: Monad[F]): Stream[F, A] = new Stream[F, A] {
 
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
@@ -62,11 +96,34 @@ object Stream { self =>
     }
   }
 
+  /** Stream with a single element `A`.
+    *
+    * Example:
+    * {{{
+    * scala> import cats.Id
+    * scala> import com.evolutiongaming.sstream.Stream
+    * scala>
+    * scala> Stream.single[Id, Int](123).toList
+    * scala> val res0: List[Int] = List(123)
+    * }}}
+    *
+    * @see [[Builders#single]] for a more convenient syntax.
+    */
   def single[F[_], A](a: A): Stream[F, A] = new Stream[F, A] {
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = f(l, a)
   }
 
-
+  /** Create a stream from any foldable structure.
+    *
+    * Example:
+    * {{{
+    * scala> import cats.Id
+    * scala> import com.evolutiongaming.sstream.Stream
+    * scala>
+    * scala> Stream.from[Id, Vector, Int](Vector(1, 2, 3, 4)).toList
+    * scala> val res0: List[Int] = List(1, 2, 3, 4)
+    * }}}
+    */
   def from[F[_], G[_], A](ga: G[A])(implicit G: FoldWhile[G], monad: Monad[F]): Stream[F, A] = new Stream[F, A] {
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = G.foldWhileM(ga, l)(f)
   }
