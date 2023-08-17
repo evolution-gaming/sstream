@@ -63,7 +63,7 @@ object Stream { self =>
     *        .lift(IO(Random.nextInt(5)))
     *        .toList
     *        .unsafeRunSync()
-    * scala> val res0: List[Int] = List(3)
+    * val res0: List[Int] = List(3)
     * }}}
     */
   def lift[F[_], A](fa: F[A])(implicit monad: FlatMap[F]): Stream[F, A] = new Stream[F, A] {
@@ -84,7 +84,7 @@ object Stream { self =>
     *        .take(10)
     *        .toList
     *        .unsafeRunSync()
-    * scala> val res0: List[Int] = List(1, 3, 0, 1, 0, 4, 1, 2, 0, 0)
+    * val res0: List[Int] = List(1, 3, 0, 1, 0, 4, 1, 2, 0, 0)
     * }}}
     *
     * @see [[Builders#repeat]] for a more convenient syntax.
@@ -111,7 +111,7 @@ object Stream { self =>
     * scala> import com.evolutiongaming.sstream.Stream
     *
     * scala> Stream.single[Id, Int](123).toList
-    * scala> val res0: List[Int] = List(123)
+    * val res0: List[Int] = List(123)
     * }}}
     *
     * @see [[Builders#single]] for a more convenient syntax.
@@ -128,7 +128,7 @@ object Stream { self =>
     * scala> import com.evolutiongaming.sstream.Stream
     *
     * scala> Stream.from[Id, Vector, Int](Vector(1, 2, 3, 4)).toList
-    * scala> val res0: List[Int] = List(1, 2, 3, 4)
+    * val res0: List[Int] = List(1, 2, 3, 4)
     * }}}
     */
   def from[F[_], G[_], A](ga: G[A])(implicit G: FoldWhile[G], monad: Monad[F]): Stream[F, A] = new Stream[F, A] {
@@ -136,6 +136,7 @@ object Stream { self =>
   }
 
 
+  /** Empty stream containing no elements */
   def empty[F[_], A](implicit F: Applicative[F]): Stream[F, A] = new Stream[F, A] {
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = l.asLeft[R].pure[F]
   }
@@ -483,6 +484,33 @@ object Stream { self =>
     }
 
 
+    /** Similar to [[flatMap]], but allows keeping a state or shortcut the
+      * computation.
+      *
+      * @param s
+      *   The initial state.
+      * @param f
+      *   Converts previous state and a new input element, to a new state and a
+      *   flattened stream of output elements. The stream is finished if there
+      *   are no more elements in original stream, or if this function returns
+      *   `None` as a state.
+      *
+      * Example (make upper case out of symbols until 3 symbols are gathered):
+      * {{{
+      * scala> import cats.Id
+      * scala> import com.evolutiongaming.sstream.Stream
+      *
+      * scala> Stream[Id]
+      *        .many("a", "b", "c", "d", "e")
+      *        .stateful(1) { (count, a) =>
+      *          val state = Option.when(count < 3)(count + 1)
+      *          val output = Stream[Id].single(a.toUpperCase)
+      *          (state, output)
+      *        }
+      *        .toList
+      * val res0: List[String] = List(A, B, C)
+      * }}}
+      */
     def stateful[S, B](
       s: S)(
       f: (S, A) => (Option[S], Stream[F, B]))(implicit
