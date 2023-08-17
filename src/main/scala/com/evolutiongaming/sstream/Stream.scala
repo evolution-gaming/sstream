@@ -487,14 +487,6 @@ object Stream { self =>
     /** Similar to [[flatMap]], but allows keeping a state or shortcut the
       * computation.
       *
-      * @param s
-      *   The initial state.
-      * @param f
-      *   Converts previous state and a new input element, to a new state and a
-      *   flattened stream of output elements. The stream is finished if there
-      *   are no more elements in original stream, or if this function returns
-      *   `None` as a state.
-      *
       * Example (make upper case out of symbols until 3 symbols are gathered):
       * {{{
       * scala> import cats.Id
@@ -510,6 +502,17 @@ object Stream { self =>
       *        .toList
       * val res0: List[String] = List(A, B, C)
       * }}}
+      *
+      * @param s
+      *   The initial state.
+      * @param f
+      *   Converts previous state and a new input element, to a new state and a
+      *   stream of output elements. The stream is finished if there are no more
+      *   elements in original stream, or if this function returns `None` as a
+      *   state.
+      *
+      * @return
+      *   Flattened stream of elements returned by `f`.
       */
     def stateful[S, B](
       s: S)(
