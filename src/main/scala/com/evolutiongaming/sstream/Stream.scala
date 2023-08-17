@@ -58,8 +58,11 @@ object Stream { self =>
     * scala> import cats.effect.unsafe.implicits.global
     * scala> import com.evolutiongaming.sstream.Stream
     * scala> import scala.util.Random
-    * scala>
-    * scala> Stream.repeat(IO(Random.nextInt(5))).toList.unsafeRunSync()
+    *
+    * scala> Stream
+    *        .lift(IO(Random.nextInt(5)))
+    *        .toList
+    *        .unsafeRunSync()
     * scala> val res0: List[Int] = List(3)
     * }}}
     */
@@ -75,8 +78,12 @@ object Stream { self =>
     * scala> import cats.effect.unsafe.implicits.global
     * scala> import com.evolutiongaming.sstream.Stream
     * scala> import scala.util.Random
-    * scala>
-    * scala> Stream.repeat(IO(Random.nextInt(5))).take(10).toList.unsafeRunSync()
+    *
+    * scala> Stream
+    *        .repeat(IO(Random.nextInt(5)))
+    *        .take(10)
+    *        .toList
+    *        .unsafeRunSync()
     * scala> val res0: List[Int] = List(1, 3, 0, 1, 0, 4, 1, 2, 0, 0)
     * }}}
     *
@@ -102,7 +109,7 @@ object Stream { self =>
     * {{{
     * scala> import cats.Id
     * scala> import com.evolutiongaming.sstream.Stream
-    * scala>
+    *
     * scala> Stream.single[Id, Int](123).toList
     * scala> val res0: List[Int] = List(123)
     * }}}
@@ -119,7 +126,7 @@ object Stream { self =>
     * {{{
     * scala> import cats.Id
     * scala> import com.evolutiongaming.sstream.Stream
-    * scala>
+    *
     * scala> Stream.from[Id, Vector, Int](Vector(1, 2, 3, 4)).toList
     * scala> val res0: List[Int] = List(1, 2, 3, 4)
     * }}}
