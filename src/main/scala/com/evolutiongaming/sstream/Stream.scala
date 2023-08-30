@@ -513,6 +513,9 @@ object Stream { self =>
       *
       * @return
       *   Flattened stream of elements returned by `f`.
+      *
+      * @see
+      *   [[stateless]] if only shortcut semantics is required.
       */
     def stateful[S, B](
       s: S)(
@@ -541,6 +544,7 @@ object Stream { self =>
       }
     }
 
+    /** Same as [[stateful]], but allows `f` calculation to be effectful */
     def statefulM[S, B](
       s: S)(
       f: (S, A) => F[(Option[S], Stream[F, B])])(implicit
@@ -569,7 +573,37 @@ object Stream { self =>
       }
     }
 
-
+    /** Similar to [[flatMap]], but allows to shortcut the computation.
+      *
+      * Example (make upper case out of symbols until "c" is encountered):
+      * {{{
+      * scala> import cats.Id
+      * scala> import com.evolutiongaming.sstream.Stream
+      *
+      * scala> Stream[Id]
+      *        .many("a", "b", "c", "d", "e")
+      *        .stateless { a =>
+      *          val continue = (a != "c")
+      *          val output = Stream[Id].single(a.toUpperCase)
+      *          (continue, output)
+      *        }
+      *        .toList
+      * val res0: List[String] = List(A, B, C)
+      * }}}
+      *
+      * @param f
+      *   Converts a new input element, to `continue` flag and a stream of
+      *   output elements. The stream is finished if there are no more elements
+      *   in original stream, or if this function returns (`false`, _) as a
+      *   resulting tuple.
+      *
+      * @return
+      *   Flattened stream of elements returned by `f`.
+      *
+      * @see
+      *   [[stateful]] if stateful processing, in addition to shortcut
+      *   semantics, is required.
+      */
     def stateless[B](
       f: A => (Boolean, Stream[F, B]))(implicit
       F: Functor[F]
@@ -593,6 +627,7 @@ object Stream { self =>
       }
     }
 
+    /** Same as [[stateless]], but allows `f` calculation to be effectful */
     def statelessM[B](
       f: A => F[(Boolean, Stream[F, B])])(implicit
       F: FlatMap[F]
