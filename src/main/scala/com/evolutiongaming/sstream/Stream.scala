@@ -677,7 +677,35 @@ object Stream { self =>
       }
     }
 
-
+    /** After this stream is exhausted, stream elements from another stream.
+      *
+      * Similar to [[concat]], but allows to use the last element emitted by a
+      * first stream to construct the second one.
+      *
+      * Example (multiply last element by 2, 3 and 4):
+      * {{{
+      * scala> import cats.Id
+      * scala> import com.evolutiongaming.sstream.Stream
+      *
+      * scala> Stream[Id]
+      *        .many(1, 2, 3, 4, 5)
+      *        .flatMapLast { a =>
+      *          val factor = a.getOrElse(1)
+      *          Stream[Id].many(factor * 2, factor * 3, factor * 4)
+      *        }
+      *        .toList
+      * val res0: List[String] = List(1, 2, 3, 4, 5, 10, 15, 20)
+      * }}}
+      *
+      * @param f
+      *   Converts a last stream element, to a stream of output elements to be
+      *   emited after all elements of original stream are emitted. If the
+      *   original stream had no elements then `None` is passed to `f` instead.
+      *
+      * @return
+      *   Stream the same elements as original stream does and then stream the
+      *   elements returned by `f`.
+      */
     def flatMapLast[B >: A](f: Option[A] => Stream[F, B])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
