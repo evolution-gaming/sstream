@@ -7,7 +7,7 @@ object Dependencies {
   val `kind-projector`       = "org.typelevel"               % "kind-projector"            % "0.11.2"
 
   object Cats {
-    private val version       = "2.10.0"
+    private val version       = "2.7.0"
     private val effectVersion = "3.4.8"
     val core   = "org.typelevel" %% "cats-core"   % version
     val laws   = "org.typelevel" %% "cats-laws"   % version
