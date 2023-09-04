@@ -723,11 +723,43 @@ object Stream { self =>
       }
     }
 
-
+    /** Apply a function recursively on the last element of the stream.
+      *
+      * Similar to [[flatMapLast]], but also applies itself to the produced elements
+      * until `None` is returned by `f`.
+      *
+      * Example (increment last element until it becomes 35):
+      * {{{
+      * scala> import cats.Id
+      * scala> import com.evolutiongaming.sstream.Stream
+      *
+      * scala> Stream[Id]
+      *        .many(10, 20, 30)
+      *        .chain { a =>
+      *          Option.when(a < 35) {
+      *            Stream[Id].single(a + 1)
+      *          }
+      *        }
+      *        .toList
+      * val res0: List[String] = List(10, 20, 30, 31, 32, 33, 34, 35)
+      * }}}
+      *
+      * @param f
+      *   Converts a last stream element, to a stream of output elements to be
+      *   emited after all elements of original stream are emitted. Also applies
+      *   the same function to the new last element until the function returns
+      *   `None`.
+      *
+      * @return
+      *   Stream the same elements as original stream does, then stream the
+      *   elements returned by recursive application of `f` to last element
+      *   and last elements of the streams produced by itself.
+      */
     def chain(f: A => Option[Stream[F, A]])(implicit F: Monad[F]): Stream[F, A] = {
       chainM { a => f(a).pure[F] }
     }
 
+    /** Same as [[chain]], but allows `f` calculation to be effectful */
     def chainM(f: A => F[Option[Stream[F, A]]])(implicit F: Monad[F]): Stream[F, A] = new Stream[F, A] {
 
       def foldWhileM[L, R](l: L)(f1: (L, A) => F[Either[L, R]]) = {
