@@ -14,10 +14,17 @@ import scala.util.{Left, Right}
  */
 trait Stream[F[_], A] {
 
-  /**
-   * Takes initial `L` and combines with all `A` until `Right[R]` is returned
-   * Returns `Left[L]` when there are no more `A` left
-   */
+  /** Takes initial `L` and combines with all `A` until `Right[R]` is returned
+    * by `f`.
+    *
+    * The stream calls `f` over and over with a new `A` value until either `f`
+    * returns `Right[R]` or there are no more `A` left in a stream. Each
+    * consecutive call to `f` will use `l` returned by a previous call to `f`.
+    *
+    * @return
+    *   `Right[R]` if `f` returned `Right[R]` or `Left[L]` if it never did, and
+    *   there are no more `A` values left.
+    */
   def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]): F[Either[L, R]]
 }
 
@@ -43,11 +50,45 @@ object Stream { self =>
     def combine(x: Stream[F, A], y: Stream[F, A]) = x concat y
   }
 
-
+  /** Stream of a single effectful `A` value.
+    *
+    * Example:
+    * {{{
+    * scala> import cats.effect.IO
+    * scala> import cats.effect.unsafe.implicits.global
+    * scala> import com.evolutiongaming.sstream.Stream
+    * scala> import scala.util.Random
+    *
+    * scala> Stream
+    *        .lift(IO(Random.nextInt(5)))
+    *        .toList
+    *        .unsafeRunSync()
+    * val res0: List[Int] = List(3)
+    * }}}
+    */
   def lift[F[_], A](fa: F[A])(implicit monad: FlatMap[F]): Stream[F, A] = new Stream[F, A] {
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = fa.flatMap(f(l, _))
   }
 
+  /** Infinite stream of effectful `A` values.
+    *
+    * Example:
+    * {{{
+    * scala> import cats.effect.IO
+    * scala> import cats.effect.unsafe.implicits.global
+    * scala> import com.evolutiongaming.sstream.Stream
+    * scala> import scala.util.Random
+    *
+    * scala> Stream
+    *        .repeat(IO(Random.nextInt(5)))
+    *        .take(10)
+    *        .toList
+    *        .unsafeRunSync()
+    * val res0: List[Int] = List(1, 3, 0, 1, 0, 4, 1, 2, 0, 0)
+    * }}}
+    *
+    * @see [[Builders#repeat]] for a more convenient syntax.
+    */
   def repeat[F[_], A](fa: F[A])(implicit F: Monad[F]): Stream[F, A] = new Stream[F, A] {
 
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = {
@@ -62,16 +103,40 @@ object Stream { self =>
     }
   }
 
+  /** Stream with a single element `A`.
+    *
+    * Example:
+    * {{{
+    * scala> import cats.Id
+    * scala> import com.evolutiongaming.sstream.Stream
+    *
+    * scala> Stream.single[Id, Int](123).toList
+    * val res0: List[Int] = List(123)
+    * }}}
+    *
+    * @see [[Builders#single]] for a more convenient syntax.
+    */
   def single[F[_], A](a: A): Stream[F, A] = new Stream[F, A] {
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = f(l, a)
   }
 
-
+  /** Create a stream from any foldable structure.
+    *
+    * Example:
+    * {{{
+    * scala> import cats.Id
+    * scala> import com.evolutiongaming.sstream.Stream
+    *
+    * scala> Stream.from[Id, Vector, Int](Vector(1, 2, 3, 4)).toList
+    * val res0: List[Int] = List(1, 2, 3, 4)
+    * }}}
+    */
   def from[F[_], G[_], A](ga: G[A])(implicit G: FoldWhile[G], monad: Monad[F]): Stream[F, A] = new Stream[F, A] {
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = G.foldWhileM(ga, l)(f)
   }
 
 
+  /** Empty stream containing no elements */
   def empty[F[_], A](implicit F: Applicative[F]): Stream[F, A] = new Stream[F, A] {
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = l.asLeft[R].pure[F]
   }
@@ -419,6 +484,39 @@ object Stream { self =>
     }
 
 
+    /** Similar to [[flatMap]], but allows keeping a state or shortcut the
+      * computation.
+      *
+      * Example (make upper case out of symbols until 3 symbols are gathered):
+      * {{{
+      * scala> import cats.Id
+      * scala> import com.evolutiongaming.sstream.Stream
+      *
+      * scala> Stream[Id]
+      *        .many("a", "b", "c", "d", "e")
+      *        .stateful(1) { (count, a) =>
+      *          val state = Option.when(count < 3)(count + 1)
+      *          val output = Stream[Id].single(a.toUpperCase)
+      *          (state, output)
+      *        }
+      *        .toList
+      * val res0: List[String] = List(A, B, C)
+      * }}}
+      *
+      * @param s
+      *   The initial state.
+      * @param f
+      *   Converts previous state and a new input element, to a new state and a
+      *   stream of output elements. The stream is finished if there are no more
+      *   elements in original stream, or if this function returns `None` as a
+      *   state.
+      *
+      * @return
+      *   Flattened stream of elements returned by `f`.
+      *
+      * @see
+      *   [[stateless]] if only shortcut semantics is required.
+      */
     def stateful[S, B](
       s: S)(
       f: (S, A) => (Option[S], Stream[F, B]))(implicit
@@ -446,6 +544,7 @@ object Stream { self =>
       }
     }
 
+    /** Same as [[stateful]], but allows `f` calculation to be effectful */
     def statefulM[S, B](
       s: S)(
       f: (S, A) => F[(Option[S], Stream[F, B])])(implicit
@@ -474,7 +573,37 @@ object Stream { self =>
       }
     }
 
-
+    /** Similar to [[flatMap]], but allows to shortcut the computation.
+      *
+      * Example (make upper case out of symbols until "c" is encountered):
+      * {{{
+      * scala> import cats.Id
+      * scala> import com.evolutiongaming.sstream.Stream
+      *
+      * scala> Stream[Id]
+      *        .many("a", "b", "c", "d", "e")
+      *        .stateless { a =>
+      *          val continue = (a != "c")
+      *          val output = Stream[Id].single(a.toUpperCase)
+      *          (continue, output)
+      *        }
+      *        .toList
+      * val res0: List[String] = List(A, B, C)
+      * }}}
+      *
+      * @param f
+      *   Converts a new input element, to `continue` flag and a stream of
+      *   output elements. The stream is finished if there are no more elements
+      *   in original stream, or if this function returns (`false`, _) as a
+      *   resulting tuple.
+      *
+      * @return
+      *   Flattened stream of elements returned by `f`.
+      *
+      * @see
+      *   [[stateful]] if stateful processing, in addition to shortcut
+      *   semantics, is required.
+      */
     def stateless[B](
       f: A => (Boolean, Stream[F, B]))(implicit
       F: Functor[F]
@@ -498,6 +627,7 @@ object Stream { self =>
       }
     }
 
+    /** Same as [[stateless]], but allows `f` calculation to be effectful */
     def statelessM[B](
       f: A => F[(Boolean, Stream[F, B])])(implicit
       F: FlatMap[F]
@@ -547,7 +677,35 @@ object Stream { self =>
       }
     }
 
-
+    /** After this stream is exhausted, stream elements from another stream.
+      *
+      * Similar to [[concat]], but allows to use the last element emitted by a
+      * first stream to construct the second one.
+      *
+      * Example (multiply last element by 2, 3 and 4):
+      * {{{
+      * scala> import cats.Id
+      * scala> import com.evolutiongaming.sstream.Stream
+      *
+      * scala> Stream[Id]
+      *        .many(1, 2, 3, 4, 5)
+      *        .flatMapLast { a =>
+      *          val factor = a.getOrElse(1)
+      *          Stream[Id].many(factor * 2, factor * 3, factor * 4)
+      *        }
+      *        .toList
+      * val res0: List[String] = List(1, 2, 3, 4, 5, 10, 15, 20)
+      * }}}
+      *
+      * @param f
+      *   Converts a last stream element, to a stream of output elements to be
+      *   emited after all elements of original stream are emitted. If the
+      *   original stream had no elements then `None` is passed to `f` instead.
+      *
+      * @return
+      *   Stream the same elements as original stream does and then stream the
+      *   elements returned by `f`.
+      */
     def flatMapLast[B >: A](f: Option[A] => Stream[F, B])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
