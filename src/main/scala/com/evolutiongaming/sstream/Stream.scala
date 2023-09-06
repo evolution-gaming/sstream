@@ -141,7 +141,7 @@ object Stream { self =>
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = l.asLeft[R].pure[F]
   }
 
-  /** Same as `Stream.repeat(())`, but applies a transformation on an effect.
+  /** Same as `Stream.single(())`, but applies a transformation on an effect.
     *
     * It could be useful to add an error handling or retry mechanics to an
     * existing stream.
