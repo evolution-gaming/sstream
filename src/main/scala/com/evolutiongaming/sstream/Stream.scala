@@ -167,8 +167,8 @@ object Stream { self =>
     * }}}
     *
     * @see
-    *   https://github.com/evolution-gaming/retry library for an out of the box
-    *   retry builders to use as a parameter for this function.
+    *   [[https://github.com/evolution-gaming/retry]] library for an out of the
+    *   box retry builders to use as a parameter for this function.
     */
   def around[F[_]](f: F ~> F): Stream[F, Unit] = new Stream[F, Unit] {
     def foldWhileM[L, R](l: L)(f1: (L, Unit) => F[Either[L, R]]) = f(f1(l, ()))
