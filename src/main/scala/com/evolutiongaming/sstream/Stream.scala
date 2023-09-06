@@ -148,6 +148,7 @@ object Stream { self =>
     *
     * Example (print every element 3 times):
     * {{{
+    * scala> import cats.arrow.FunctionK
     * scala> import cats.effect.IO
     * scala> import cats.effect.unsafe.implicits.global
     * scala> import com.evolutiongaming.sstream.Stream
