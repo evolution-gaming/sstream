@@ -141,7 +141,35 @@ object Stream { self =>
     def foldWhileM[L, R](l: L)(f: (L, A) => F[Either[L, R]]) = l.asLeft[R].pure[F]
   }
 
-
+  /** Same as `Stream.single(())`, but applies a transformation on an effect.
+    *
+    * It could be useful to add an error handling or retry mechanics to an
+    * existing stream.
+    *
+    * Example (print every element 3 times):
+    * {{{
+    * scala> import cats.arrow.FunctionK
+    * scala> import cats.effect.IO
+    * scala> import cats.effect.unsafe.implicits.global
+    * scala> import com.evolutiongaming.sstream.Stream
+    * scala> import scala.util.Random
+    *
+    * scala> val repeat3 = new FunctionK[IO, IO] {
+    *          def apply[A](fa: IO[A]): IO[A] = fa *> fa *> fa
+    *        }
+    * scala> val stream = for {
+    *          n <- Stream[IO].many(3, 2, 1, 0)
+    *          _ <- Stream.around(repeat3)
+    *          _ <- Stream.lift(IO.print(s"\$n "))
+    *        } yield n
+    * 3 3 3 2 2 2 1 1 1 0 0 0
+    * val res0: List[Int] = List(3, 2, 1, 0)
+    * }}}
+    *
+    * @see
+    *   [[https://github.com/evolution-gaming/retry]] library for an out of the
+    *   box retry builders to use as a parameter for this function.
+    */
   def around[F[_]](f: F ~> F): Stream[F, Unit] = new Stream[F, Unit] {
     def foldWhileM[L, R](l: L)(f1: (L, Unit) => F[Either[L, R]]) = f(f1(l, ()))
   }
