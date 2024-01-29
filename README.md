@@ -36,3 +36,7 @@ addSbtPlugin("com.evolution" % "sbt-artifactory-plugin" % "0.0.2")
 
 libraryDependencies += "com.evolutiongaming" %% "sstream" % "0.2.1"
 ```
+
+## Versioning
+
+The library depends on Cats Effect thus published with version `1.X.X` for CE3 and `0.X.X` for CE2

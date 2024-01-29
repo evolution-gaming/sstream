@@ -1,16 +1,18 @@
 package com.evolutiongaming.sstream
 
-import cats.effect.IO
-import cats.effect.unsafe.IORuntime
+import cats.syntax.all._
+import cats.effect.{IO, ContextShift, Timer}
 import org.scalatest.Succeeded
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 object IOSuite {
   val Timeout: FiniteDuration = 5.seconds
 
-  implicit val ioRuntime: IORuntime = IORuntime.global
+  implicit val contextShiftIO: ContextShift[IO] = IO.contextShift(global)
+  implicit val timerIO: Timer[IO]               = IO.timer(global)
 
   def runIO[A](io: IO[A], timeout: FiniteDuration = Timeout): Future[Succeeded.type] = {
     io.timeout(timeout).as(Succeeded).unsafeToFuture()
