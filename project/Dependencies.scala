@@ -3,7 +3,7 @@ import sbt._
 object Dependencies {
   val scalatest              = "org.scalatest"              %% "scalatest"                 % "3.2.16"
   val discipline             = "org.typelevel"              %% "discipline-scalatest"      % "2.2.0"
-  val `kind-projector`       = "org.typelevel"               % "kind-projector"            % "0.13.2"
+  val `kind-projector`       = "org.typelevel"               % "kind-projector"            % "0.13.3"
 
   object Cats {
     private val version       = "2.7.0"
