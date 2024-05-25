@@ -2,7 +2,7 @@ import sbt._
 
 object Dependencies {
   val scalatest              = "org.scalatest"              %% "scalatest"                 % "3.2.16"
-  val discipline             = "org.typelevel"              %% "discipline-scalatest"      % "2.2.0"
+  val discipline             = "org.typelevel"              %% "discipline-scalatest"      % "2.3.0"
   val `kind-projector`       = "org.typelevel"               % "kind-projector"            % "0.13.2"
 
   object Cats {
