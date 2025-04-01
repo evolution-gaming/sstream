@@ -1,4 +1,5 @@
 package com.evolutiongaming.sstream
+
 import cats.kernel.laws.discipline.MonoidTests
 import cats.laws.discipline.MonadTests
 import cats.{Eq, Eval}

@@ -1,4 +1,4 @@
-import Dependencies._
+import Dependencies.*
 
 name := "sstream"
 
@@ -14,9 +14,11 @@ organizationHomepage := Some(url("https://evolution.com"))
 
 scalaVersion := crossScalaVersions.value.head
 
-crossScalaVersions := Seq("3.3.0", "2.13.11", "2.12.18")
+crossScalaVersions := Seq("3.3.5", "2.13.16", "2.12.20")
 
 publishTo := Some(Resolver.evolutionReleases)
+
+versionPolicyIntention := Compatibility.BinaryCompatible
 
 libraryDependencies ++= Seq(
   Cats.core,
@@ -28,21 +30,24 @@ libraryDependencies ++= Seq(
 
 libraryDependencies ++= {
   if (scalaVersion.value.startsWith("3")) Nil
-  else List(compilerPlugin(`kind-projector` cross CrossVersion.full))
+  else Seq(compilerPlugin(`kind-projector` cross CrossVersion.full))
 }
 
 ThisBuild / scalacOptions ++= {
-  if (scalaVersion.value.startsWith("3")) Seq("-Ykind-projector:underscores")
-  else Seq("-Xsource:3", "-P:kind-projector:underscore-placeholders")
+  if (scalaVersion.value.startsWith("3")) Seq(
+    "-Ykind-projector:underscores",
+  ) else if (scalaVersion.value.startsWith("2.12")) Seq(
+    "-Xsource:3",
+    "-P:kind-projector:underscore-placeholders",
+  ) else Seq( // 2.13.x
+    "-Xsource:3-cross",
+    "-P:kind-projector:underscore-placeholders",
+  )
 }
 
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
 
-releaseCrossBuild := true
-
 scalacOptsFailOnWarn := Some(false)
 
-//addCommandAlias("check", "all versionPolicyCheck Compile/doc")
-addCommandAlias("check", "show version")
+addCommandAlias("check", "+all versionPolicyCheck Compile/doc")
 addCommandAlias("build", "+all compile test")
-
