@@ -4,7 +4,7 @@ import cats.data.IndexedStateT
 import cats.effect.kernel.{CancelScope, Poll}
 import cats.effect.unsafe.implicits.global
 import cats.effect.{IO, MonadCancel, Resource}
-import cats.syntax.all._
+import cats.syntax.all.*
 import cats.{Id, MonadError, ~>}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers

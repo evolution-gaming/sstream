@@ -1,6 +1,6 @@
 package com.evolutiongaming.sstream
 
-import cats.syntax.all._
+import cats.syntax.all.*
 import cats.{Foldable, Monad}
 
 trait FoldWhile[F[_]] {
