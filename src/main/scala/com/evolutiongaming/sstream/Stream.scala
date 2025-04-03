@@ -2,7 +2,7 @@ package com.evolutiongaming.sstream
 
 import cats.effect.{MonadCancel, Resource, Sync}
 import cats.kernel.Monoid
-import cats.syntax.all._
+import cats.syntax.all.*
 import cats.{Applicative, ApplicativeError, FlatMap, Functor, Monad, StackSafeMonad, ~>}
 
 import scala.util.{Left, Right}
@@ -248,9 +248,9 @@ object Stream { self =>
 
     final case class Take[+A] private[Cmd](value: A) extends Cmd[A]
 
-    final case object Skip extends Cmd[Nothing]
+    case object Skip extends Cmd[Nothing]
 
-    final case object Stop extends Cmd[Nothing]
+    case object Stop extends Cmd[Nothing]
   }
 
 

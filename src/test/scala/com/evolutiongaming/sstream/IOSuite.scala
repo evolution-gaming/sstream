@@ -5,7 +5,7 @@ import cats.effect.unsafe.IORuntime
 import org.scalatest.Succeeded
 
 import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 object IOSuite {
   val Timeout: FiniteDuration = 5.seconds

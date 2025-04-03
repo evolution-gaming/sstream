@@ -34,5 +34,5 @@
 ```scala
 addSbtPlugin("com.evolution" % "sbt-artifactory-plugin" % "0.0.2")
 
-libraryDependencies += "com.evolutiongaming" %% "sstream" % "0.2.1"
+libraryDependencies += "com.evolutiongaming" %% "sstream" % "1.1.0"
 ```
