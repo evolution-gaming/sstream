@@ -14,7 +14,7 @@ organizationHomepage := Some(url("https://evolution.com"))
 
 scalaVersion := crossScalaVersions.value.head
 
-crossScalaVersions := Seq("3.3.5", "2.13.16", "2.12.20")
+crossScalaVersions := Seq("3.3.8", "2.13.18")
 
 publishTo := Some(Resolver.evolutionReleases)
 
@@ -34,15 +34,20 @@ libraryDependencies ++= {
 }
 
 ThisBuild / scalacOptions ++= {
-  if (scalaVersion.value.startsWith("3")) Seq(
-    "-Ykind-projector:underscores",
-  ) else if (scalaVersion.value.startsWith("2.12")) Seq(
-    "-Xsource:3",
-    "-P:kind-projector:underscore-placeholders",
-  ) else Seq( // 2.13.x
-    "-Xsource:3-cross",
-    "-P:kind-projector:underscore-placeholders",
-  )
+  scalaBinaryVersion.value match {
+    case "2.13" =>
+      Seq(
+        "-Xsource:3-cross",
+        "-P:kind-projector:underscore-placeholders",
+      )
+    case _      =>
+      Seq(
+        "-Ykind-projector:underscores",
+        // improve error messages:
+        "-explain",
+        "-explain-types",
+      )
+  }
 }
 
 licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
