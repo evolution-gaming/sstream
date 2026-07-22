@@ -552,22 +552,23 @@ object Stream { self =>
     ): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        var state = s
         self
-          .foldWhileM((l, s)) { case ((l, s0), a) =>
-            val (s, stream) = f(s0, a)
+          .foldWhileM[L, Either[L, R]](l) { (l, a) =>
+            val (s, stream) = f(state, a)
             stream
               .foldWhileM(l)(f1)
               .map {
                 case Left(l)        => s match {
-                  case Some(s) => (l, s).asLeft[Either[L, R]]
-                  case None    => l.asLeft[R].asRight[(L, S)]
+                  case Some(s) => state = s; l.asLeft[Either[L, R]]
+                  case None    => l.asLeft[R].asRight[L]
                 }
-                case r: Right[L, R] => r.asRight[(L, S)]
+                case r: Right[L, R] => r.asRight[L]
               }
           }
           .map {
-            case Left((l, _)) => l.asLeft[R]
-            case Right(r)     => r
+            case Left(l)  => l.asLeft[R]
+            case Right(r) => r
           }
       }
     }
@@ -580,23 +581,24 @@ object Stream { self =>
     ): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        var state = s
         self
-          .foldWhileM((l, s)) { case ((l, s), a) =>
-            f(s, a).flatMap { case (s, stream) =>
+          .foldWhileM[L, Either[L, R]](l) { (l, a) =>
+            f(state, a).flatMap { case (s, stream) =>
               stream
                 .foldWhileM(l)(f1)
                 .map {
                   case Left(l)        => s match {
-                    case Some(s) => (l, s).asLeft[Either[L, R]]
-                    case None    => l.asLeft[R].asRight[(L, S)]
+                    case Some(s) => state = s; l.asLeft[Either[L, R]]
+                    case None    => l.asLeft[R].asRight[L]
                   }
-                  case r: Right[L, R] => r.asRight[(L, S)]
+                  case r: Right[L, R] => r.asRight[L]
                 }
             }
           }
           .map {
-            case Left((l, _)) => l.asLeft[R]
-            case Right(r)     => r
+            case Left(l)  => l.asLeft[R]
+            case Right(r) => r
           }
       }
     }
@@ -737,16 +739,17 @@ object Stream { self =>
     def flatMapLast[B >: A](f: Option[A] => Stream[F, B])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
+        var last    = null.asInstanceOf[A]
+        var present = false
         self
-          .foldWhileM((l, none[A])) { case ((l, _), a) =>
-            f1(l, a).map {
-              case Left(l)        => (l, a.some).asLeft[R]
-              case a: Right[L, R] => a.leftCast[(L, Option[A])]
-            }
+          .foldWhileM(l) { (l, a) =>
+            last = a
+            present = true
+            f1(l, a)
           }
           .flatMap {
-            case Left((l, a))                => f(a).foldWhileM(l)(f1)
-            case a: Right[(L, Option[A]), R] => a.leftCast[L].pure[F]
+            case Left(l)        => f(if (present) last.some else none[A]).foldWhileM(l)(f1)
+            case r: Right[L, R] => r.leftCast[L].pure[F]
           }
       }
     }

@@ -51,3 +51,13 @@ scalacOptsFailOnWarn := Some(false)
 
 addCommandAlias("check", "+all versionPolicyCheck Compile/doc")
 addCommandAlias("build", "+all compile test")
+
+lazy val benchmark = (project in file("benchmark"))
+  .enablePlugins(JmhPlugin)
+  .dependsOn(LocalRootProject)
+  .settings(
+    name := "sstream-benchmark",
+    scalaVersion := (LocalRootProject / scalaVersion).value,
+    crossScalaVersions := Nil,
+    publish / skip := true,
+  )
