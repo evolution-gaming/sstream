@@ -28,7 +28,7 @@ libraryDependencies ++= Seq(
   discipline % Test,
 )
 
-libraryDependencies ++= {
+ThisBuild / libraryDependencies ++= {
   if (scalaVersion.value.startsWith("3")) Nil
   else Seq(compilerPlugin(`kind-projector` cross CrossVersion.full))
 }
@@ -36,6 +36,8 @@ libraryDependencies ++= {
 ThisBuild / scalacOptions ++= {
   if (scalaVersion.value.startsWith("3")) Seq(
     "-Ykind-projector:underscores",
+    "--explain",
+    "--explain-types",
   ) else if (scalaVersion.value.startsWith("2.12")) Seq(
     "-Xsource:3",
     "-P:kind-projector:underscore-placeholders",
@@ -58,10 +60,10 @@ lazy val benchmark = (project in file("benchmark"))
   .settings(
     name := "sstream-benchmark",
     scalaVersion := (LocalRootProject / scalaVersion).value,
-    crossScalaVersions := Nil,
+    crossScalaVersions := (LocalRootProject / crossScalaVersions).value,
     publish / skip := true,
     Compile / doc / sources := Seq.empty,
-    scalacOptions := Nil,
+    scalacOptions := (LocalRootProject / scalacOptions).value,
     Compile / unmanagedSourceDirectories := {
       if (scalaVersion.value.startsWith("3")) (Compile / unmanagedSourceDirectories).value
       else Seq.empty
