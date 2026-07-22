@@ -62,4 +62,8 @@ lazy val benchmark = (project in file("benchmark"))
     publish / skip := true,
     Compile / doc / sources := Seq.empty,
     scalacOptions := Nil,
+    Compile / unmanagedSourceDirectories := {
+      if (scalaVersion.value.startsWith("3")) (Compile / unmanagedSourceDirectories).value
+      else Seq.empty
+    },
   )
