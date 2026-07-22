@@ -60,4 +60,6 @@ lazy val benchmark = (project in file("benchmark"))
     scalaVersion := (LocalRootProject / scalaVersion).value,
     crossScalaVersions := Nil,
     publish / skip := true,
+    Compile / doc / sources := Seq.empty,
+    scalacOptions := Nil,
   )
