@@ -552,7 +552,7 @@ object Stream { self =>
     ): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
-        var state = s
+        var state = s // mutable to avoid per-element boxing
         self
           .foldWhileM[L, Either[L, R]](l) { (l, a) =>
             val (s, stream) = f(state, a)
@@ -581,7 +581,7 @@ object Stream { self =>
     ): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
-        var state = s
+        var state = s // mutable to avoid per-element boxing
         self
           .foldWhileM[L, Either[L, R]](l) { (l, a) =>
             f(state, a).flatMap { case (s, stream) =>
@@ -739,7 +739,7 @@ object Stream { self =>
     def flatMapLast[B >: A](f: Option[A] => Stream[F, B])(implicit F: Monad[F]): Stream[F, B] = new Stream[F, B] {
 
       def foldWhileM[L, R](l: L)(f1: (L, B) => F[Either[L, R]]) = {
-        var last    = null.asInstanceOf[A]
+        var last    = null.asInstanceOf[A] // mutable sentinel to avoid per-element boxing
         var present = false
         self
           .foldWhileM(l) { (l, a) =>
