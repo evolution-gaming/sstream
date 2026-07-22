@@ -28,7 +28,7 @@ libraryDependencies ++= Seq(
   discipline % Test,
 )
 
-libraryDependencies ++= {
+ThisBuild / libraryDependencies ++= {
   if (scalaVersion.value.startsWith("3")) Nil
   else Seq(compilerPlugin(`kind-projector` cross CrossVersion.full))
 }
@@ -56,3 +56,19 @@ scalacOptsFailOnWarn := Some(false)
 
 addCommandAlias("check", "+all versionPolicyCheck Compile/doc")
 addCommandAlias("build", "+all compile test")
+
+lazy val benchmark = (project in file("benchmark"))
+  .enablePlugins(JmhPlugin)
+  .dependsOn(LocalRootProject)
+  .settings(
+    name := "sstream-benchmark",
+    scalaVersion := (LocalRootProject / scalaVersion).value,
+    crossScalaVersions := (LocalRootProject / crossScalaVersions).value,
+    publish / skip := true,
+    Compile / doc / sources := Seq.empty,
+    scalacOptions := (LocalRootProject / scalacOptions).value,
+    Compile / unmanagedSourceDirectories := {
+      if (scalaVersion.value.startsWith("3")) (Compile / unmanagedSourceDirectories).value
+      else Seq.empty
+    },
+  )

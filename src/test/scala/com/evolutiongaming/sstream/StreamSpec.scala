@@ -349,6 +349,24 @@ class StreamSpec extends AnyFunSuite with Matchers {
       .toList shouldEqual List(0, 1, 2, 2)
   }
 
+  test("stateful/flatMapLast isolate state across concurrent folds") {
+    val shared = Stream[IO]
+      .apply((1 to 200).toList)
+      .filter(_ % 3 != 0)
+      .stateful(0) { (acc, e) => (Some(acc + e), Stream[IO].single(acc + e)) }
+      .flatMapLast {
+        case Some(b) => Stream[IO].single(b * 1000)
+        case None    => Stream[IO].empty[Int]
+      }
+
+    val test = for {
+      expected <- shared.toList
+      results  <- (1 to 1000).toList.parTraverse(_ => shared.toList)
+    } yield results.foreach { _ shouldEqual expected }
+
+    test.unsafeRunSync()
+  }
+
   test("fold") {
     Stream[Id]
       .repeat(1)
