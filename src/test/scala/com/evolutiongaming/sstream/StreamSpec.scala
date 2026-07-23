@@ -349,19 +349,46 @@ class StreamSpec extends AnyFunSuite with Matchers {
       .toList shouldEqual List(0, 1, 2, 2)
   }
 
-  test("stateful/flatMapLast isolate state across concurrent folds") {
+  test("stateful/foldWhileM isolates internal state across concurrent folds") {
     val shared = Stream[IO]
-      .apply((1 to 200).toList)
-      .filter(_ % 3 != 0)
+      .apply((1 to 100).toList)
       .stateful(0) { (acc, e) => (Some(acc + e), Stream[IO].single(acc + e)) }
-      .flatMapLast {
-        case Some(b) => Stream[IO].single(b * 1000)
-        case None    => Stream[IO].empty[Int]
-      }
+      .foldWhileM(List.empty[Int])((acc, a) => IO.pure(Left(a :: acc)))
 
     val test = for {
-      expected <- shared.toList
-      results  <- (1 to 1000).toList.parTraverse(_ => shared.toList)
+      expected <- shared
+      results  <- (1 to 1000).toList.parTraverse(_ => shared)
+    } yield results.foreach { _ shouldEqual expected }
+
+    test.unsafeRunSync()
+  }
+
+  test("statefulM/foldWhileM isolates internal state across concurrent folds") {
+    val shared = Stream[IO]
+      .apply((1 to 100).toList)
+      .statefulM(0) { (acc, e) => IO(Some(acc + e), Stream[IO].single(acc + e)) }
+      .foldWhileM(List.empty[Int])((acc, a) => IO.pure(Left(a :: acc)))
+
+    val test = for {
+      expected <- shared
+      results  <- (1 to 1000).toList.parTraverse(_ => shared)
+    } yield results.foreach { _ shouldEqual expected }
+
+    test.unsafeRunSync()
+  }
+
+  test("flatMapLast isolates internal state across concurrent folds") {
+    val shared = Stream[IO]
+      .apply((1 to 100).toList)
+      .flatMapLast {
+        case Some(100) => Stream[IO].empty[Int]
+        case f => fail(s"got unexpected: $f")
+      }
+      .toList
+
+    val test = for {
+      expected <- shared
+      results  <- (1 to 1000).toList.parTraverse(_ => shared)
     } yield results.foreach { _ shouldEqual expected }
 
     test.unsafeRunSync()
