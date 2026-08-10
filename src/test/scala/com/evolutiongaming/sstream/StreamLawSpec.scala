@@ -8,7 +8,6 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.prop.Configuration
 import org.typelevel.discipline.scalatest.FunSuiteDiscipline
 
-
 class StreamLawSpec extends AnyFunSuite with FunSuiteDiscipline with Configuration {
 
   implicit def eqStream[A: Eq]: Eq[Stream[Eval, A]] = (x: Stream[Eval, A], y: Stream[Eval, A]) => {
