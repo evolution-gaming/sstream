@@ -4,13 +4,13 @@ name := "sstream"
 
 organization := "com.evolutiongaming"
 
-homepage := Some(url("https://github.com/evolution-gaming/sstream"))
+homepage := Some(uri("https://github.com/evolution-gaming/sstream"))
 
 startYear := Some(2019)
 
 organizationName := "Evolution"
 
-organizationHomepage := Some(url("https://evolution.com"))
+organizationHomepage := Some(uri("https://evolution.com"))
 
 scalaVersion := crossScalaVersions.value.head
 
@@ -30,7 +30,7 @@ libraryDependencies ++= Seq(
 
 ThisBuild / libraryDependencies ++= {
   if (scalaVersion.value.startsWith("3")) Nil
-  else Seq(compilerPlugin(`kind-projector` cross CrossVersion.full))
+  else Seq(compilerPlugin(`kind-projector`.cross(CrossVersion.full)))
 }
 
 ThisBuild / scalacOptions ++= {
@@ -50,12 +50,12 @@ ThisBuild / scalacOptions ++= {
   }
 }
 
-licenses := Seq(("MIT", url("https://opensource.org/licenses/MIT")))
+licenses := Seq(("MIT", uri("https://opensource.org/licenses/MIT")))
 
 scalacOptsFailOnWarn := Some(false)
 
 addCommandAlias("check", "+all versionPolicyCheck Compile/doc")
-addCommandAlias("build", "+all compile test")
+addCommandAlias("build", "+all compile testFull")
 
 lazy val benchmark = (project in file("benchmark"))
   .enablePlugins(JmhPlugin)
