@@ -1,7 +1,7 @@
 package com.evolutiongaming.sstream.benchmark
 
-import cats.effect.{IO, SyncIO}
 import cats.effect.unsafe.implicits.global
+import cats.effect.{IO, SyncIO}
 import cats.syntax.all.*
 import com.evolutiongaming.sstream.Stream
 import com.evolutiongaming.sstream.Stream.StreamOps
@@ -93,20 +93,20 @@ class StreamCombinatorBenchmark {
     val source: Stream[SyncIO, Int] = Stream[SyncIO].apply(records)
 
     val stream = source
-      .flatMap { r =>                                        // record dispatch (single/empty)
+      .flatMap { r => // record dispatch (single/empty)
         if (r % 16 == 0) Stream[SyncIO].empty[Int] else Stream[SyncIO].single(r)
       }
-      .filter { _ >= 0 }                                     // range guard
-      .flatMap { r => Stream.lift(SyncIO(r)) }               // effectful decode (F -> Stream)
-      .flatMap { r => Stream[SyncIO].apply(expand(r, fo)) }  // event expansion (Nel -> Stream)
-      .filter { e => drop == 0 || e % 2 == 0 }               // dedup-style drop
-      .map { e => Box(e) }                                   // yield
-      .stateful(0) { (s, e) =>                               // monotonic cursor
+      .filter { _ >= 0 } // range guard
+      .flatMap { r => Stream.lift(SyncIO(r)) } // effectful decode (F -> Stream)
+      .flatMap { r => Stream[SyncIO].apply(expand(r, fo)) } // event expansion (Nel -> Stream)
+      .filter { e => drop == 0 || e % 2 == 0 } // dedup-style drop
+      .map { e => Box(e) } // yield
+      .stateful(0) { (s, e) => // monotonic cursor
         (Some(if (e.value > s) e.value else s), Stream[SyncIO].single(e))
       }
-      .flatMapLast {                                         // Cassandra/Kafka seam
+      .flatMapLast { // Cassandra/Kafka seam
         case Some(b) => Stream[SyncIO].single(b)
-        case None    => Stream[SyncIO].empty[Box]
+        case None => Stream[SyncIO].empty[Box]
       }
 
     stream.length.unsafeRunSync()
@@ -119,20 +119,20 @@ class StreamCombinatorBenchmark {
     val source: Stream_1_1_0[SyncIO, Int] = Stream_1_1_0[SyncIO].apply(records)
 
     val stream = source
-      .flatMap { r =>                                        // record dispatch (single/empty)
+      .flatMap { r => // record dispatch (single/empty)
         if (r % 16 == 0) Stream_1_1_0[SyncIO].empty[Int] else Stream_1_1_0[SyncIO].single(r)
       }
-      .filter { _ >= 0 }                                     // range guard
-      .flatMap { r => Stream_1_1_0.lift(SyncIO(r)) }               // effectful decode (F -> Stream)
-      .flatMap { r => Stream_1_1_0[SyncIO].apply(expand(r, fo)) }  // event expansion (Nel -> Stream)
-      .filter { e => drop == 0 || e % 2 == 0 }               // dedup-style drop
-      .map { e => Box(e) }                                   // yield
-      .stateful(0) { (s, e) =>                               // monotonic cursor
+      .filter { _ >= 0 } // range guard
+      .flatMap { r => Stream_1_1_0.lift(SyncIO(r)) } // effectful decode (F -> Stream)
+      .flatMap { r => Stream_1_1_0[SyncIO].apply(expand(r, fo)) } // event expansion (Nel -> Stream)
+      .filter { e => drop == 0 || e % 2 == 0 } // dedup-style drop
+      .map { e => Box(e) } // yield
+      .stateful(0) { (s, e) => // monotonic cursor
         (Some(if (e.value > s) e.value else s), Stream_1_1_0[SyncIO].single(e))
       }
-      .flatMapLast {                                         // Cassandra/Kafka seam
+      .flatMapLast { // Cassandra/Kafka seam
         case Some(b) => Stream_1_1_0[SyncIO].single(b)
-        case None    => Stream_1_1_0[SyncIO].empty[Box]
+        case None => Stream_1_1_0[SyncIO].empty[Box]
       }
 
     stream.length.unsafeRunSync()
@@ -159,7 +159,7 @@ class StreamCombinatorBenchmark {
       }
       .flatMapLast {
         case Some(b) => Stream[IO].single(b)
-        case None    => Stream[IO].empty[Box]
+        case None => Stream[IO].empty[Box]
       }
 
     stream.length.unsafeRunSync()
@@ -186,7 +186,7 @@ class StreamCombinatorBenchmark {
       }
       .flatMapLast {
         case Some(b) => Stream_1_1_0[IO].single(b)
-        case None    => Stream_1_1_0[IO].empty[Box]
+        case None => Stream_1_1_0[IO].empty[Box]
       }
 
     stream.length.unsafeRunSync()

@@ -34,7 +34,6 @@ class StreamSpec extends AnyFunSuite with Matchers {
       def empty: State = State(0, List.empty)
     }
 
-
     type StateT[A] = cats.data.StateT[Try, State, A]
 
     object StateT {
@@ -44,8 +43,10 @@ class StreamSpec extends AnyFunSuite with Matchers {
       }
     }
 
-
-    def monadCancelOf[F[_]](implicit F: MonadError[F, Throwable]): MonadCancel[F, Throwable] = new MonadCancel[F, Throwable] {
+    def monadCancelOf[F[_]](
+      implicit
+      F: MonadError[F, Throwable],
+    ): MonadCancel[F, Throwable] = new MonadCancel[F, Throwable] {
       def raiseError[A](e: Throwable) = F.raiseError(e)
 
       def handleErrorWith[A](fa: F[A])(f: Throwable => F[A]) = F.handleErrorWith(fa)(f)
@@ -68,7 +69,6 @@ class StreamSpec extends AnyFunSuite with Matchers {
 
       def onCancel[A](fa: F[A], fin: F[Unit]): F[A] = fa
     }
-
 
     implicit val MC: MonadCancel[StateT, Throwable] =
       monadCancelOf[StateT](IndexedStateT.catsDataMonadErrorForIndexedStateT[Try, State, Throwable])
@@ -98,11 +98,15 @@ class StreamSpec extends AnyFunSuite with Matchers {
 
     val (state, value) = stream.take(2).toList.run(State.empty).get
     value shouldEqual List(1, 2)
-    state shouldEqual State(2, List(
-      Action.Release,
-      Action.Use,
-      Action.Use,
-      Action.Acquire))
+    state shouldEqual State(
+      2,
+      List(
+        Action.Release,
+        Action.Use,
+        Action.Use,
+        Action.Acquire,
+      ),
+    )
   }
 
   test("lift") {
@@ -215,7 +219,6 @@ class StreamSpec extends AnyFunSuite with Matchers {
       def empty: State = List.empty
     }
 
-
     type StateT[A] = cats.data.StateT[Id, State, A]
 
     object StateT {
@@ -251,7 +254,8 @@ class StreamSpec extends AnyFunSuite with Matchers {
     state shouldEqual List(
       Action.After,
       Action.Inside,
-      Action.Before)
+      Action.Before,
+    )
   }
 
   test("fromIterator") {
@@ -357,7 +361,7 @@ class StreamSpec extends AnyFunSuite with Matchers {
 
     val test = for {
       expected <- shared
-      results  <- (1 to 1000).toList.parTraverse(_ => shared)
+      results <- (1 to 1000).toList.parTraverse(_ => shared)
     } yield results.foreach { _ shouldEqual expected }
 
     test.unsafeRunSync()
@@ -371,7 +375,7 @@ class StreamSpec extends AnyFunSuite with Matchers {
 
     val test = for {
       expected <- shared
-      results  <- (1 to 1000).toList.parTraverse(_ => shared)
+      results <- (1 to 1000).toList.parTraverse(_ => shared)
     } yield results.foreach { _ shouldEqual expected }
 
     test.unsafeRunSync()
@@ -388,7 +392,7 @@ class StreamSpec extends AnyFunSuite with Matchers {
 
     val test = for {
       expected <- shared
-      results  <- (1 to 1000).toList.parTraverse(_ => shared)
+      results <- (1 to 1000).toList.parTraverse(_ => shared)
     } yield results.foreach { _ shouldEqual expected }
 
     test.unsafeRunSync()

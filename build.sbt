@@ -40,7 +40,7 @@ ThisBuild / scalacOptions ++= {
         "-Xsource:3-cross",
         "-P:kind-projector:underscore-placeholders",
       )
-    case _      =>
+    case _ =>
       Seq(
         "-Ykind-projector:underscores",
         // improve error messages:
@@ -54,7 +54,8 @@ licenses := Seq(("MIT", uri("https://opensource.org/licenses/MIT")))
 
 scalacOptsFailOnWarn := Some(false)
 
-addCommandAlias("check", "+all versionPolicyCheck Compile/doc")
+addCommandAlias("check", "+all scalafmtCheckRepo versionPolicyCheck Compile/doc")
+addCommandAlias("fmt", "+scalafmtRepo")
 addCommandAlias("build", "+all compile testFull")
 
 lazy val benchmark = (project in file("benchmark"))
