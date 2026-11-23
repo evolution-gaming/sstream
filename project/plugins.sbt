@@ -8,6 +8,6 @@ addSbtPlugin("ch.epfl.scala" % "sbt-version-policy" % "3.4.0")
 
 addSbtPlugin("com.github.sbt" % "sbt-dynver" % "5.2.0")
 
-addSbtPlugin("pl.project13.scala" % "sbt-jmh" % "0.4.8")
+addSbtPlugin("com.github.sbt" % "sbt-jmh" % "0.4.9")
 
 addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.6.2")
